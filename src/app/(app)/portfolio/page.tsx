@@ -280,6 +280,7 @@ export default function PortfolioPage() {
     }, []);
 
     return (
+        <>
         <div className="flex flex-col gap-8 w-full animate-in fade-in slide-in-from-bottom-4 duration-700 font-sans text-[#f0ede8]">
             {/* Header */}
             <header className="flex items-end gap-4 border-b border-[#2a3d30]/50 pb-6">
@@ -582,7 +583,6 @@ export default function PortfolioPage() {
                             <p className="text-[#a8a8a0] text-sm">No lookout signals in this timeframe. Enable AI for analysis.</p>
                         )}
                     </section>
-            </div>
 
             {/* Right Column: Visualizations & Stats */}
             <div className="lg:col-span-5 flex flex-col gap-6">
@@ -677,11 +677,12 @@ export default function PortfolioPage() {
                         })}
                     </div>
                 </div>
+            </div>
             </BentoGrid>
         </div>
-        </main >
+        </div>
 
-        {/* Share Transaction Modal */ }
+        {/* Share Transaction Modal */}
     {
         txToShare && (
             <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
