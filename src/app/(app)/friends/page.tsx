@@ -29,7 +29,7 @@ export default function FriendsPage() {
                 // Fetch details for each friend
                 if (friendsUids.length > 0) {
                     const friendDocs = await Promise.all(friendsUids.map((uid: string) => getDoc(doc(db, "users", uid))));
-                    setFriendsList(friendDocs.map(d => ({ uid: d.id, ...d.data() })));
+                    setFriendsList(friendDocs.filter(d => d.exists()).map(d => ({ uid: d.id, ...d.data() })));
                 } else {
                     setFriendsList([]);
                 }

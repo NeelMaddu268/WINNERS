@@ -13,6 +13,7 @@ export default function SocialPage() {
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [myFriends, setMyFriends] = useState<string[]>([]);
     const [loadingFeed, setLoadingFeed] = useState(true);
+    const [activeTab, setActiveTab] = useState<"explore" | "friends">("explore");
 
     const [openCommentsId, setOpenCommentsId] = useState<string | null>(null);
     const [newCommentText, setNewCommentText] = useState("");
@@ -157,6 +158,21 @@ export default function SocialPage() {
                 </div>
             </header>
 
+            <div className="flex gap-2 mb-6">
+                <button
+                    onClick={() => setActiveTab("explore")}
+                    className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 ${activeTab === "explore" ? "bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-[#111c18] border border-[#2a3d30]/50 text-[#a8a8a0] hover:text-white hover:border-[#4ade9a]/50"}`}
+                >
+                    Explore
+                </button>
+                <button
+                    onClick={() => setActiveTab("friends")}
+                    className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 ${activeTab === "friends" ? "bg-[#4ade9a] text-[#0d1a14] shadow-[0_0_15px_rgba(74,222,154,0.3)]" : "bg-[#111c18] border border-[#2a3d30]/50 text-[#a8a8a0] hover:text-white hover:border-[#4ade9a]/50"}`}
+                >
+                    Friends Only
+                </button>
+            </div>
+
             {loadingFeed ? (
                 <div className="flex justify-center items-center py-12">
                     <div className="w-8 h-8 border-2 border-[#4ade9a] border-t-transparent rounded-full animate-spin"></div>
@@ -164,11 +180,24 @@ export default function SocialPage() {
             ) : (
                 <div className="flex flex-col gap-6">
                     {activities.filter(a => {
-                        if (!a.audience || a.audience === "public") return true;
-                        if (a.audience === "friends") {
-                            return currentUser && (a.user.uid === currentUser.uid || myFriends.includes(a.user.uid));
+                        const isMyPost = currentUser && a.user.uid === currentUser.uid;
+                        const isFriendPost = currentUser && myFriends.includes(a.user.uid);
+
+                        // First apply audience rules
+                        let canView = false;
+                        if (!a.audience || a.audience === "public") canView = true;
+                        if (a.audience === "friends") canView = (isMyPost || isFriendPost);
+
+                        if (!canView) return false;
+
+                        // Then apply tab filtering
+                        if (activeTab === "friends") {
+                            // Only show friends posts (or my own posts)
+                            return isMyPost || isFriendPost;
                         }
-                        return false;
+
+                        // Explore tab: show everything we can view
+                        return true;
                     }).map((activity) => {
                         const likesCount = activity.likes?.length || 0;
                         const likedByMe = currentUser && activity.likes?.includes(currentUser.uid);

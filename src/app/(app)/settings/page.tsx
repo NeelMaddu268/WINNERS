@@ -101,13 +101,15 @@ export default function SettingsPage() {
             try {
                 await deleteUser(user);
             } catch (authError: any) {
-                // Ignore the requires-recent-login error for the prototype
-                if (authError.code !== 'auth/requires-recent-login') {
-                    throw authError; // Rethrow actual errors
+                // If it fails because of recent login, we must fail the whole process
+                // so they know to log out and log back in, rather than getting stuck half-deleted.
+                if (authError.code === 'auth/requires-recent-login') {
+                    throw new Error("For security reasons, please log out and log back in before deleting your account.");
                 }
+                throw authError; // Rethrow other actual errors
             }
 
-            // 3. Force sign out and redirect to home
+            // 3. Force sign out and redirect to home after successful auth deletion
             await signOut(auth);
             router.push("/");
         } catch (error: any) {
