@@ -139,6 +139,10 @@ export default function ProfilePage({ params }: { params: Promise<{ uid: string 
     }
 
     const totalPortfolioValue = cashBalance + mergedPositions.reduce((acc, p) => acc + (p.shares * (livePrices[p.ticker] ?? p.avgCost)), 0);
+    const totalCostBasis = cashBalance + mergedPositions.reduce((acc, p) => acc + p.costBasis, 0);
+
+    const totalReturnVar = totalPortfolioValue - totalCostBasis;
+    const totalReturnPct = totalCostBasis > 0 ? (totalReturnVar / totalCostBasis) * 100 : 0;
 
     return (
         <div className="flex flex-col gap-8 w-full max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans text-white pb-24 md:pb-8">
@@ -187,10 +191,19 @@ export default function ProfilePage({ params }: { params: Promise<{ uid: string 
                     </div>
                 ) : (
                     <>
-                        <div className="flex flex-wrap gap-4 mb-8 pb-8 border-b border-zinc-800">
+                        <div className="flex flex-wrap gap-8 mb-8 pb-8 border-b border-zinc-800">
                             <div>
                                 <span className="text-zinc-500 text-sm uppercase font-bold tracking-wider">Total Est. Value</span>
                                 <div className="text-3xl font-bold mt-1">${totalPortfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            </div>
+                            <div>
+                                <span className="text-zinc-500 text-sm uppercase font-bold tracking-wider">Total Return</span>
+                                <div className={`text-3xl font-bold mt-1 flex items-baseline gap-2 ${totalReturnVar >= 0 ? 'text-[#00c805]' : 'text-red-500'}`}>
+                                    <span>{totalReturnVar >= 0 ? "+" : "-"}${Math.abs(totalReturnVar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <span className="text-lg opacity-80 bg-zinc-900/50 px-2 py-0.5 rounded-md border border-zinc-800/50">
+                                        {totalReturnPct >= 0 ? "+" : ""}{totalReturnPct.toFixed(2)}%
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
@@ -205,13 +218,17 @@ export default function ProfilePage({ params }: { params: Promise<{ uid: string 
                                             <th className="pb-3 font-bold text-right pr-4">Shares</th>
                                             <th className="pb-3 font-bold text-right pr-4">Avg Cost</th>
                                             <th className="pb-3 font-bold text-right pr-4">Current Price</th>
-                                            <th className="pb-3 font-bold text-right">Value</th>
+                                            <th className="pb-3 font-bold text-right pr-4">Value</th>
+                                            <th className="pb-3 font-bold text-right">Total Return</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {mergedPositions.map((item, i) => {
                                             const currentPrice = livePrices[item.ticker] ?? item.avgCost;
                                             const marketValue = currentPrice * item.shares;
+                                            const totalCost = item.avgCost * item.shares;
+                                            const returnVar = marketValue - totalCost;
+                                            const returnPct = totalCost > 0 ? (returnVar / totalCost) * 100 : 0;
                                             const isPositive = currentPrice >= item.avgCost;
 
                                             return (
@@ -220,11 +237,17 @@ export default function ProfilePage({ params }: { params: Promise<{ uid: string 
                                                         <div className="font-bold text-sm">{item.ticker}</div>
                                                         <div className="text-xs text-zinc-500">{item.name}</div>
                                                     </td>
-                                                    <td className="py-4 text-right text-sm pr-4">{item.shares.toLocaleString()}</td>
+                                                    <td className="py-4 text-right text-sm pr-4">{item.shares.toLocaleString(undefined, { maximumFractionDigits: 5 })}</td>
                                                     <td className="py-4 text-right text-sm pr-4">${item.avgCost.toFixed(2)}</td>
                                                     <td className="py-4 text-right text-sm pr-4">${currentPrice.toFixed(2)}</td>
-                                                    <td className={`py-4 text-right text-sm font-bold ${isPositive ? "text-[#00c805]" : "text-red-500"}`}>
+                                                    <td className={`py-4 text-right text-sm font-bold pr-4 ${isPositive ? "text-[#00c805]" : "text-red-500"}`}>
                                                         ${marketValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </td>
+                                                    <td className={`py-4 text-right text-sm font-bold ${returnVar >= 0 ? "text-[#00c805]" : "text-red-500"}`}>
+                                                        <div className="flex flex-col items-end">
+                                                            <span>{returnVar >= 0 ? "+" : "-"}${Math.abs(returnVar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                            <span className="text-xs opacity-80">{returnPct >= 0 ? "+" : ""}{returnPct.toFixed(2)}%</span>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             );
