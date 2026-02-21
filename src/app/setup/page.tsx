@@ -30,13 +30,13 @@ export default function SetupPage() {
             if (user) {
                 // If they already have a complete profile with display name, they shouldn't be here
                 if (user.displayName) {
-                    router.push("/dashboard");
+                    router.push("/home");
                     return;
                 }
                 setUserPhone(user.phoneNumber);
                 setLoading(false);
             } else {
-                router.push("/");
+                router.push("/login");
             }
         });
 
@@ -123,8 +123,8 @@ export default function SetupPage() {
                 createdAt: new Date().toISOString()
             });
 
-            // 3. Navigate to dashboard
-            router.push("/dashboard");
+            // 3. Navigate to home
+            router.push("/home");
         } catch (err: any) {
             console.error("Failed to complete setup:", err);
             setSetupError(err.message || "An unexpected error occurred. Please try again.");

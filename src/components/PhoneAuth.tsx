@@ -31,10 +31,14 @@ export default function PhoneAuth() {
                 'expired-callback': () => {
                     // Response expired. Ask user to solve reCAPTCHA again.
                     setError("reCAPTCHA expired. Please try again.");
-                    window.recaptchaVerifier.clear();
-                    window.recaptchaVerifier = null;
+                    if (window.recaptchaVerifier) {
+                        try { window.recaptchaVerifier.clear(); } catch (e) { }
+                        window.recaptchaVerifier = null;
+                    }
                 }
             });
+            // Try to render it early so it catches errors early, but it's optional
+            window.recaptchaVerifier.render().catch(console.error);
         }
     }, []);
 
@@ -64,11 +68,18 @@ export default function PhoneAuth() {
                 setError("Failed to send verification code. Please try again.");
             }
 
+            // Safely clear the recaptcha, because if it failed before fully rendering it throws an error reading 'style'
             if (window.recaptchaVerifier) {
-                window.recaptchaVerifier.clear();
+                try {
+                    window.recaptchaVerifier.clear();
+                } catch (clearErr) {
+                    console.error("Failed to clear reCAPTCHA:", clearErr);
+                }
                 window.recaptchaVerifier = null;
-                // re-initialize on next retry
+
+                // Re-initialize for the next attempt
                 window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+                window.recaptchaVerifier.render().catch(console.error);
             }
         } finally {
             setLoading(false);
@@ -94,7 +105,7 @@ export default function PhoneAuth() {
                 router.push("/setup");
             } else {
                 // Existing completed user
-                router.push("/dashboard");
+                router.push("/home");
             }
 
         } catch (err: any) {
