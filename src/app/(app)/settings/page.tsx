@@ -2,15 +2,47 @@
 
 import { auth, db } from "@/lib/firebase";
 import { signOut, deleteUser } from "firebase/auth";
-import { doc, deleteDoc } from "firebase/firestore";
+import { doc, deleteDoc, getDoc, updateDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function SettingsPage() {
     const router = useRouter();
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState("");
+    const [autoShare, setAutoShare] = useState(false);
+    const [loadingSettings, setLoadingSettings] = useState(true);
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            if (!auth.currentUser) return;
+            try {
+                const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
+                if (userDoc.exists()) {
+                    setAutoShare(userDoc.data().autoShare || false);
+                }
+            } catch (err) {
+                console.error("Failed to load settings:", err);
+            }
+            setLoadingSettings(false);
+        };
+        fetchSettings();
+    }, []);
+
+    const toggleAutoShare = async () => {
+        if (!auth.currentUser) return;
+        const newVal = !autoShare;
+        setAutoShare(newVal);
+        try {
+            await updateDoc(doc(db, "users", auth.currentUser.uid), {
+                autoShare: newVal
+            });
+        } catch (err) {
+            console.error("Failed to update auto share setting:", err);
+            setAutoShare(!newVal); // revert on error
+        }
+    };
 
     const handleSignOut = async () => {
         try {
@@ -67,8 +99,23 @@ export default function SettingsPage() {
                     <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Update your personal details here.</p>
 
                     <div className="mt-6 flex flex-col gap-4">
-                        <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-zinc-100 dark:border-zinc-800 text-sm text-zinc-500">
-                            Profile updating logic will go here.
+                        <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-zinc-100 dark:border-zinc-800">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Auto-Share Transactions</h3>
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Automatically post your trades to the social feed.</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="sr-only peer"
+                                        checked={autoShare}
+                                        onChange={toggleAutoShare}
+                                        disabled={loadingSettings}
+                                    />
+                                    <div className="w-11 h-6 bg-zinc-200 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00c805]"></div>
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </div>
