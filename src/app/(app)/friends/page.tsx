@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { auth, db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, doc, getDoc, updateDoc, arrayUnion, addDoc, deleteDoc, getDocs } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, getDoc, updateDoc, arrayUnion, arrayRemove, addDoc, deleteDoc, getDocs } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 export default function FriendsPage() {
@@ -17,6 +17,8 @@ export default function FriendsPage() {
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [searchError, setSearchError] = useState("");
+
+    const [userToUnfriend, setUserToUnfriend] = useState<any | null>(null);
 
     // Listen to current user doc for friends array
     useEffect(() => {
@@ -163,6 +165,26 @@ export default function FriendsPage() {
         }
     };
 
+    const removeFriend = async (friendId: string) => {
+        if (!auth.currentUser) return;
+
+        try {
+            // Remove from my friends
+            await updateDoc(doc(db, "users", auth.currentUser.uid), {
+                friends: arrayRemove(friendId)
+            });
+
+            // Remove me from their friends
+            await updateDoc(doc(db, "users", friendId), {
+                friends: arrayRemove(auth.currentUser.uid)
+            });
+        } catch (e) {
+            console.error("Failed to remove friend", e);
+        } finally {
+            setUserToUnfriend(null);
+        }
+    };
+
     return (
         <div className="flex flex-col w-full max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans text-white pb-24 md:pb-8">
             <header className="px-4 mt-2 mb-6">
@@ -213,7 +235,19 @@ export default function FriendsPage() {
                                         <span className="text-sm text-zinc-500">{f.handle || (f.username ? `@${f.username}` : "@user")}</span>
                                     </div>
                                 </div>
-                                <span className="text-sm text-zinc-400 font-medium bg-zinc-800 px-3 py-1 rounded-full">View Profile</span>
+                                <div className="flex gap-2 items-center">
+                                    <span className="text-sm text-zinc-400 font-medium bg-zinc-800 px-3 py-1 rounded-full hidden sm:block">View Profile</span>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setUserToUnfriend(f);
+                                        }}
+                                        className="w-8 h-8 rounded-full bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition flex items-center justify-center border border-red-500/20"
+                                        title="Unfriend"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                </div>
                             </div>
                         ))
                     )}
@@ -338,6 +372,40 @@ export default function FriendsPage() {
                                 </div>
                             );
                         })}
+                    </div>
+                </div>
+            )}
+
+            {/* Unfriend Confirmation Modal */}
+            {userToUnfriend && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="bg-[#111] border border-zinc-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="p-6 text-center">
+                            <div className="w-16 h-16 rounded-full bg-red-500/20 text-red-500 mx-auto flex items-center justify-center mb-4 border border-red-500/30">
+                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6" />
+                                </svg>
+                            </div>
+                            <h3 className="text-xl font-bold text-white mb-2">Remove Friend?</h3>
+                            <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
+                                Are you sure you want to unfriend <strong className="text-white">{userToUnfriend.displayName || userToUnfriend.username}</strong>? You will no longer be able to see each other's private portfolios or friends-only posts.
+                            </p>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setUserToUnfriend(null)}
+                                    className="flex-1 py-3 px-4 bg-zinc-800 hover:bg-zinc-700 text-white font-bold rounded-xl transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => removeFriend(userToUnfriend.uid)}
+                                    className="flex-1 py-3 px-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+                                >
+                                    Unfriend
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

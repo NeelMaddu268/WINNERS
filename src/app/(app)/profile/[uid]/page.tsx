@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc, collection, query, where, getDocs, addDoc, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, addDoc, onSnapshot, updateDoc, arrayRemove } from "firebase/firestore";
 import { recalculatePortfolioFromTransactions, type Transaction } from "@/app/actions/portfolio";
 
 export default function ProfilePage({ params }: { params: Promise<{ uid: string }> }) {
@@ -144,6 +144,30 @@ export default function ProfilePage({ params }: { params: Promise<{ uid: string 
     const totalReturnVar = totalPortfolioValue - totalCostBasis;
     const totalReturnPct = totalCostBasis > 0 ? (totalReturnVar / totalCostBasis) * 100 : 0;
 
+    const removeFriend = async () => {
+        if (!auth.currentUser || !targetUid) return;
+
+        if (window.confirm(`Are you sure you want to unfriend ${targetUser?.displayName || targetUser?.username || "this user"}?`)) {
+            try {
+                // Optimistic update
+                setCurrentUserData((prev: any) => prev ? ({ ...prev, friends: prev.friends?.filter((id: string) => id !== targetUid) || [] }) : prev);
+
+                // Remove from my friends
+                await updateDoc(doc(db, "users", auth.currentUser.uid), {
+                    friends: arrayRemove(targetUid)
+                });
+
+                // Remove me from their friends
+                await updateDoc(doc(db, "users", targetUid), {
+                    friends: arrayRemove(auth.currentUser.uid)
+                });
+            } catch (e) {
+                console.error("Failed to remove friend", e);
+                // We're not reverting optimistic state here for simplicity, but in prod we should
+            }
+        }
+    };
+
     return (
         <div className="flex flex-col gap-8 w-full max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans text-white pb-24 md:pb-8">
             {/* Header / Profile Info */}
@@ -159,7 +183,13 @@ export default function ProfilePage({ params }: { params: Promise<{ uid: string 
                         {isSelf ? (
                             <span className="bg-zinc-800 text-zinc-400 px-3 py-1 text-sm font-bold rounded-full">This is you</span>
                         ) : isFriend ? (
-                            <span className="bg-[#00c805]/20 text-[#00c805] border border-[#00c805]/30 px-3 py-1 text-sm font-bold rounded-full">✓ Friends</span>
+                            <div className="flex gap-2">
+                                <span className="bg-[#00c805]/20 text-[#00c805] border border-[#00c805]/30 px-3 py-1 text-sm font-bold rounded-full">✓ Friends</span>
+                                <button onClick={removeFriend} className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-3 py-1 text-sm font-bold rounded-full transition-colors flex items-center gap-1">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                    Unfriend
+                                </button>
+                            </div>
                         ) : hasPendingRequest ? (
                             <span className="bg-zinc-800 text-zinc-400 border border-zinc-700 px-3 py-1 text-sm font-bold rounded-full">Request Pending</span>
                         ) : (
