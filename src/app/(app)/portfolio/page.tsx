@@ -1,10 +1,20 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 import { recalculatePortfolioFromTransactions, type Transaction } from "@/app/actions/portfolio";
+import {
+    getPortfolioPulse,
+    getAccountInsights,
+    getLookout,
+    getInvestorHypeScore,
+    type PortfolioPulseResult,
+    type AccountInsightsResult,
+    type LookoutResult,
+} from "@/app/actions/gemini";
 
 type PortfolioPosition = { ticker: string; name: string; shares: number; avgCost: number; costBasis: number; priceAtPurchase?: number };
 
@@ -18,6 +28,12 @@ export default function PortfolioPage() {
     const [loading, setLoading] = useState(true);
     const [livePrices, setLivePrices] = useState<Record<string, number>>({});
     const [activeTab, setActiveTab] = useState<"assets" | "history">("assets");
+    const [timeframe, setTimeframe] = useState("2 wks");
+    const [portfolioPulse, setPortfolioPulse] = useState<PortfolioPulseResult | null>(null);
+    const [accountInsights, setAccountInsights] = useState<AccountInsightsResult | null>(null);
+    const [lookout, setLookout] = useState<LookoutResult | null>(null);
+    const [lookoutHypeScores, setLookoutHypeScores] = useState<Record<string, { score: number | null; points: string[] }>>({});
+    const [aiLoading, setAiLoading] = useState({ pulse: false, insights: false, lookout: false });
 
     // Merge duplicate tickers: sum shares, weighted avg cost. Remove positions with 0 shares.
     const mergedPositions = useMemo(() => {
@@ -132,6 +148,38 @@ export default function PortfolioPage() {
     }, [transactionHistory]);
 
     useEffect(() => {
+        const holdings = mergedPositions.map((p) => ({ ticker: p.ticker, name: p.name, shares: p.shares, costBasis: p.costBasis }));
+        setAiLoading({ pulse: true, insights: true, lookout: true });
+        getPortfolioPulse(timeframe, holdings).then((r) => {
+            setPortfolioPulse(r ?? null);
+            setAiLoading((prev) => ({ ...prev, pulse: false }));
+        });
+        getAccountInsights(
+            timeframe,
+            mergedPositions.map((p) => ({ ticker: p.ticker, name: p.name, shares: p.shares })),
+            transactionsWithPrices.map((t) => ({ ticker: t.ticker, type: t.type, shares: t.shares, timestamp: t.timestamp }))
+        ).then((r) => {
+            setAccountInsights(r ?? null);
+            setAiLoading((prev) => ({ ...prev, insights: false }));
+        });
+        getLookout(timeframe, mergedPositions.map((p) => ({ ticker: p.ticker, name: p.name })), []).then((r) => {
+            setLookout(r ?? null);
+            setAiLoading((prev) => ({ ...prev, lookout: false }));
+            if (r?.items) {
+                const tickers = r.items.filter((i) => i.ticker).map((i) => i.ticker!);
+                tickers.forEach((ticker) => {
+                    const item = r.items.find((i) => i.ticker === ticker);
+                    if (item) {
+                        getInvestorHypeScore(ticker, item.name).then((hype) => {
+                            setLookoutHypeScores((prev) => ({ ...prev, [ticker]: hype }));
+                        });
+                    }
+                });
+            }
+        });
+    }, [timeframe, mergedPositions, transactionsWithPrices]);
+
+    useEffect(() => {
         // Generate mock candlestick data for the mini chart
         setCandleData(
             Array.from({ length: 15 }, () => {
@@ -152,11 +200,15 @@ export default function PortfolioPage() {
                     Account
                 </h1>
                 <div className="relative mb-2">
-                    <select className="appearance-none bg-[#1a2a22] border border-[#2a3d30] text-[#a8a8a0] text-sm py-1.5 pl-4 pr-10 rounded-full focus:outline-none focus:border-[#4ade9a] transition cursor-pointer">
-                        <option>2 wks</option>
-                        <option>1 mo</option>
-                        <option>3 mo</option>
-                        <option>YTD</option>
+                    <select
+                        value={timeframe}
+                        onChange={(e) => setTimeframe(e.target.value)}
+                        className="appearance-none bg-[#1a2a22] border border-[#2a3d30] text-[#a8a8a0] text-sm py-1.5 pl-4 pr-10 rounded-full focus:outline-none focus:border-[#4ade9a] transition cursor-pointer"
+                    >
+                        <option value="2 wks">2 wks</option>
+                        <option value="1 mo">1 mo</option>
+                        <option value="3 mo">3 mo</option>
+                        <option value="YTD">YTD</option>
                     </select>
                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[#a8a8a0]">
                         <svg className="fill-current w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
@@ -179,29 +231,40 @@ export default function PortfolioPage() {
                             Your Portfolio Pulse
                         </h2>
 
-                        <p className="text-lg md:text-xl text-[#a8a8a0] leading-relaxed max-w-3xl mb-8">
-                            <span className="text-[#4ade9a] font-medium">AI Insights:</span> Your portfolio is currently heavily consolidated in the tech sector, showing strong momentum from recent AI-driven rallies. While your growth metrics are exceptional, your diversification score is low. Consider exploring index funds to hedge against sector-specific volatility.
-                        </p>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {/* AI Score Badge: Overvaluation */}
-                            <div className="flex items-center justify-between p-4 bg-[#0a120f] border border-[#2a3d30]/40 rounded-2xl">
-                                <span className="text-sm font-medium text-[#a8a8a0]">Overvaluation Risk</span>
-                                <span className="bg-red-500/10 text-red-400 font-bold px-3 py-1 rounded-full text-sm border border-red-500/20">High (82/100)</span>
+                        {aiLoading.pulse ? (
+                            <div className="py-8 flex items-center justify-center text-[#a8a8a0]">
+                                <div className="w-8 h-8 border-2 border-[#4ade9a]/30 border-t-[#4ade9a] rounded-full animate-spin" />
+                                <span className="ml-3">Analyzing portfolio...</span>
                             </div>
-
-                            {/* AI Score Badge: Growth */}
-                            <div className="flex items-center justify-between p-4 bg-[#0a120f] border border-[#2a3d30]/40 rounded-2xl">
-                                <span className="text-sm font-medium text-[#a8a8a0]">Growth Potential</span>
-                                <span className="bg-[#4ade9a]/10 text-[#4ade9a] font-bold px-3 py-1 rounded-full text-sm border border-[#4ade9a]/20">Exceptional (95/100)</span>
-                            </div>
-
-                            {/* AI Score Badge: Political Climate */}
-                            <div className="flex items-center justify-between p-4 bg-[#0a120f] border border-[#2a3d30]/40 rounded-2xl">
-                                <span className="text-sm font-medium text-[#a8a8a0]">Political Climate</span>
-                                <span className="bg-yellow-500/10 text-yellow-400 font-bold px-3 py-1 rounded-full text-sm border border-yellow-500/20">Neutral (50/100)</span>
-                            </div>
-                        </div>
+                        ) : portfolioPulse ? (
+                            <>
+                                <p className="text-base md:text-lg text-[#a8a8a0] leading-relaxed max-w-3xl mb-8">
+                                    <span className="text-[#4ade9a] font-medium">AI Insights:</span> {portfolioPulse.insight}
+                                </p>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="flex items-center justify-between p-4 bg-[#0a120f] border border-[#2a3d30]/40 rounded-2xl">
+                                        <span className="text-sm font-medium text-[#a8a8a0]">Overvaluation Risk</span>
+                                        <span className={`font-bold px-3 py-1 rounded-full text-sm border ${portfolioPulse.overvaluation >= 60 ? "bg-red-500/10 text-red-400 border-red-500/20" : portfolioPulse.overvaluation >= 40 ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" : "bg-[#4ade9a]/10 text-[#4ade9a] border-[#4ade9a]/20"}`}>
+                                            {portfolioPulse.overvaluation}/100
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between p-4 bg-[#0a120f] border border-[#2a3d30]/40 rounded-2xl">
+                                        <span className="text-sm font-medium text-[#a8a8a0]">Growth Potential</span>
+                                        <span className={`font-bold px-3 py-1 rounded-full text-sm border ${portfolioPulse.growthPotential >= 70 ? "bg-[#4ade9a]/10 text-[#4ade9a] border-[#4ade9a]/20" : portfolioPulse.growthPotential >= 40 ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"}`}>
+                                            {portfolioPulse.growthPotential}/100
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between p-4 bg-[#0a120f] border border-[#2a3d30]/40 rounded-2xl">
+                                        <span className="text-sm font-medium text-[#a8a8a0]">Political Climate</span>
+                                        <span className={`font-bold px-3 py-1 rounded-full text-sm border ${portfolioPulse.politicalClimate >= 60 ? "bg-[#4ade9a]/10 text-[#4ade9a] border-[#4ade9a]/20" : portfolioPulse.politicalClimate >= 40 ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"}`}>
+                                            {portfolioPulse.politicalClimate}/100
+                                        </span>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <p className="text-[#a8a8a0]">Add GEMINI_API_KEY to .env.local to enable AI analysis.</p>
+                        )}
                     </div>
                 </div>
             )}
@@ -331,62 +394,94 @@ export default function PortfolioPage() {
                     {/* Left Column: Narrative & Lookout */}
                     <div className="lg:col-span-7 flex flex-col gap-10">
 
-                        {/* Narrative Report */}
+                        {/* Narrative Report - Account Insights */}
                         <section className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
-                            {/* Subtle glow */}
                             <div className="absolute top-0 right-0 w-64 h-64 bg-[#4ade9a]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
-
                             <h2 className="text-xl text-[#a8a8a0] font-medium mb-6">
-                                Your bi-monthly report looks great, here's what happened:
+                                Account Insights
                             </h2>
-
-                            <ul className="space-y-6 text-lg leading-relaxed relative z-10">
-                                <li className="flex gap-4 items-start">
-                                    <span className="text-[#4ade9a] text-2xl leading-none mt-1">&mdash;</span>
-                                    <p>Last week started out rough when <span className="text-white font-medium border-b border-white/20 pb-0.5">Apple earnings disappointed...</span></p>
-                                </li>
-                                <li className="flex gap-4 items-start">
-                                    <span className="text-[#4ade9a] text-2xl leading-none mt-1">&mdash;</span>
-                                    <div className="flex-1">
-                                        <p>Your bet on <span className="text-white font-bold bg-[#4ade9a]/10 px-2 py-0.5 rounded text-[#4ade9a]">WDC</span> 6-months ago paid off this week!</p>
-                                        <p className="text-[#a8a8a0] text-base mt-2">...unveiled new microchips</p>
-                                    </div>
-                                </li>
-                            </ul>
+                            {aiLoading.insights ? (
+                                <div className="py-6 flex items-center text-[#a8a8a0]">
+                                    <div className="w-6 h-6 border-2 border-[#4ade9a]/30 border-t-[#4ade9a] rounded-full animate-spin" />
+                                    <span className="ml-3 text-sm">Analyzing positions...</span>
+                                </div>
+                            ) : accountInsights ? (
+                                <div className="space-y-6 text-lg leading-relaxed relative z-10">
+                                    {accountInsights.items.length > 0 ? (
+                                        accountInsights.items.map((item, i) => (
+                                            <div key={i} className="flex gap-4 items-start">
+                                                <span className="text-[#4ade9a] text-2xl leading-none mt-1">&mdash;</span>
+                                                <div>
+                                                    <p><span className="text-white font-bold">{item.ticker}</span> ({item.name}): {item.movement}</p>
+                                                    <p className="text-[#a8a8a0] text-base mt-1">Drivers: {item.drivers}</p>
+                                                    <p className="text-[#a8a8a0] text-base mt-1">{item.interpretation}</p>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-[#a8a8a0]">No significant position movements in this timeframe.</p>
+                                    )}
+                                    <p className="text-white font-medium mt-4">{accountInsights.portfolioObservation}</p>
+                                    {accountInsights.watchItems?.length > 0 && (
+                                        <div className="mt-4">
+                                            <span className="text-[#a8a8a0] text-sm font-medium">Watch:</span>
+                                            <ul className="mt-2 space-y-1 text-[#a8a8a0] text-sm">
+                                                {accountInsights.watchItems.map((w, i) => (
+                                                    <li key={i}>• {w}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <p className="text-[#a8a8a0] text-sm">Enable AI to see account insights.</p>
+                            )}
                         </section>
 
                         {/* Lookout Section */}
                         <section className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-8 shadow-xl">
                             <h2 className="text-2xl font-serif font-bold mb-6 flex items-center gap-3 text-[#f0ede8]" style={{ fontFamily: 'Playfair Display, serif' }}>
-                                Lookout <span className="text-2xl">👀</span>
+                                Lookout
                             </h2>
-
-                            <ul className="space-y-5 text-lg">
-                                <li className="flex gap-4 items-start">
-                                    <span className="text-[#a8a8a0] text-2xl leading-none mt-1">&mdash;</span>
-                                    <p className="leading-relaxed">
-                                        <span className="text-white font-medium">MRST</span> P/E ratio dropped, <span className="text-[#4ade9a]">look into buying in</span>
-                                    </p>
-                                </li>
-                                <li className="flex gap-4 items-center">
-                                    <span className="text-[#a8a8a0] text-2xl leading-none">&mdash;</span>
-                                    <div className="flex-1 flex items-center justify-between">
-                                        <p className="leading-relaxed text-[#a8a8a0]">
-                                            <span className="text-white font-medium">Nvidia</span> teases sept 5. product reveal
-                                        </p>
-                                        <div className="flex flex-col items-center gap-1 ml-4 bg-[#1a2a22] border border-[#2a3d30] px-3 py-2 rounded-xl">
-                                            <div className="relative w-10 h-10 flex items-center justify-center">
-                                                <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
-                                                    <circle cx="50" cy="50" r="40" stroke="rgba(255,255,255,0.05)" strokeWidth="12" fill="none" />
-                                                    <circle cx="50" cy="50" r="40" stroke="#4ade9a" strokeWidth="12" fill="none" strokeDasharray="251.2" strokeDashoffset="35.1" strokeLinecap="round" />
-                                                </svg>
-                                                <span className="absolute text-xs font-bold text-white">86%</span>
+                            {aiLoading.lookout ? (
+                                <div className="py-6 flex items-center text-[#a8a8a0]">
+                                    <div className="w-6 h-6 border-2 border-[#4ade9a]/30 border-t-[#4ade9a] rounded-full animate-spin" />
+                                    <span className="ml-3 text-sm">Scanning for signals...</span>
+                                </div>
+                            ) : lookout?.items && lookout.items.length > 0 ? (
+                                <ul className="space-y-5 text-lg">
+                                    {lookout.items.map((item, i) => (
+                                        <li key={i} className="flex gap-4 items-start">
+                                            <span className="text-[#a8a8a0] text-2xl leading-none mt-1">&mdash;</span>
+                                            <div className="flex-1">
+                                                <p className="leading-relaxed">
+                                                    {item.ticker ? (
+                                                        <Link href={`/markets/${item.ticker}`} className="text-white font-medium hover:text-[#4ade9a] transition underline">
+                                                            {item.name} ({item.ticker})
+                                                        </Link>
+                                                    ) : (
+                                                        <span className="text-white font-medium">{item.name}</span>
+                                                    )}
+                                                    {" "}{item.item}
+                                                </p>
+                                                <p className="text-[#a8a8a0] text-sm mt-1">{item.whyItMatters}</p>
+                                                {item.ticker && lookoutHypeScores[item.ticker] && (
+                                                    <div className="mt-2 flex items-center gap-2">
+                                                        <div className="flex flex-col items-center gap-0.5 bg-[#1a2a22] border border-[#2a3d30] px-3 py-2 rounded-xl">
+                                                            <span className="text-xs font-bold text-white">
+                                                                {lookoutHypeScores[item.ticker].score ?? "—"}
+                                                            </span>
+                                                            <span className="text-[10px] text-[#a8a8a0] font-medium uppercase tracking-wider">Hype</span>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <span className="text-[10px] text-[#a8a8a0] font-medium uppercase tracking-wider">AI Hype</span>
-                                        </div>
-                                    </div>
-                                </li>
-                            </ul>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-[#a8a8a0] text-sm">No lookout signals in this timeframe. Enable AI for analysis.</p>
+                            )}
                         </section>
                     </div>
 

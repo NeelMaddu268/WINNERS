@@ -1,98 +1,312 @@
 "use server";
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import fs from "fs";
+import path from "path";
 
-const API_KEY = process.env.GEMINI_API_KEY || "AIzaSyCuJTahFfn623GzFp6912viKOZwOf_JTbc";
-const genAI = new GoogleGenerativeAI(API_KEY);
+const API_KEY = process.env.GEMINI_API_KEY;
+const FINNHUB_KEY = process.env.FINNHUB_API_KEY;
+const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
-const HYPE_SCORE_RUBRIC = `
-Here is a rigorous scoring framework you can use to rate the investor hype level of any stock (ticker) on a 1–100 scale. It focuses on observable signals that typically correlate with retail enthusiasm, narrative intensity, and speculative attention rather than fundamentals.
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const MAX_REQUESTS_PER_MINUTE = 150; // Paid Tier 1
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
-Investor Hype Score (IHS) — 0 to 100
+const cache = new Map<string, { data: string; expires: number }>();
+const requestTimestamps: number[] = [];
 
-Definition:
-A quantitative estimate of how strongly a stock is driven by narrative, attention, and speculative excitement rather than valuation or earnings.
-
-Score = weighted sum of 5 dimensions
-Each dimension scored 0–20 → total 0–100
-
-1. Retail Attention Intensity (0–20)
-Measures how much non-institutional investor discussion exists.
-Metrics: Reddit mentions, X/Twitter freq, Google Trends, YouTube coverage.
-Scoring: 0–4 rarely discussed, 5–9 moderate, 10–14 frequently, 15–17 dominant, 18–20 meme-level
-
-2. Narrative Strength & Virality (0–20)
-How compelling and shareable the story is. (AI revolution, Next Tesla, Disrupting X)
-Scoring: 0–4 no strong story, 5–9 niche thesis, 10–14 clear theme, 15–17 viral narrative, 18–20 cultural phenomenon
-
-3. Price Behavior Consistent with Hype (0–20)
-Market behavior typical of speculative excitement.
-Scoring: 0–4 stable, 5–9 moderate momentum, 10–14 hype-like runs, 15–17 repeated speculative spikes, 18–20 meme-stock dynamics
-
-4. Valuation vs Fundamentals Gap (0–20)
-Degree to which expectations exceed financial reality.
-Scoring: 0–4 fundamentals aligned, 5–9 mild premium, 10–14 optimism priced in, 15–17 extreme expectations, 18–20 story > business
-
-5. Retail-Speculation Structure (0–20)
-Mechanical features that amplify hype.
-Scoring: 0–4 institution-driven, 5–9 balanced, 10–14 retail-heavy, 15–17 speculation-prone, 18–20 squeeze-capable
-
-Final Score Interpretation
-0–20 → No hype
-21–40 → Low hype
-41–60 → Moderate hype
-61–80 → High hype
-81–100 → Extreme hype / meme
-
-Example Calibration Anchors:
-Low (10–30): JPM, PG, KO
-Moderate (40–60): AMD, SHOP, DIS
-High (60–80): NVDA (AI era), TSLA, PLTR
-Extreme (80–100): GME 2021, AMC 2021, DWAC 2022
-
-Strict Scoring Procedure: Look up current web signals around the requested ticker and respond with ONLY a JSON object containing the exact following structure:
-{
-  "score": <number 1-100>,
-  "points": ["<very short bullet point 1>", "<very short bullet point 2>"]
-}
-`;
-
-export async function getInvestorHypeScore(ticker: string, companyName: string) {
-    // API Key is temporarily rate-limited, returning placeholder data for now.
-    return {
-        score: null,
-        points: [
-            "AI generated hype analysis is temporarily paused.",
-            "Please check back later or update the Gemini API Key in the environment variables."
-        ]
-    };
-
-    /* Original Gemini Implementation (Disabled for Rate Limits):
+function loadRules(filename: string): string {
     try {
-        // Using gemini-2.5-flash as it's the latest available model for this key
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        return fs.readFileSync(path.join(process.cwd(), filename), "utf-8");
+    } catch {
+        return "";
+    }
+}
+const GEMINIRULES = loadRules("GEMINIRULES.MD");
+const HYPESCORE_RULES = loadRules("HYPESCORE.MD");
 
-        const prompt = `Analyze the current investor hype for ${companyName} (${ticker}). Use the provided rubbing to generate a score and two bullet points explaining why. Output strictly as JSON.`;
+function getCached(key: string): string | null {
+    const entry = cache.get(key);
+    if (!entry || entry.expires < Date.now()) return null;
+    return entry.data;
+}
 
-        const result = await model.generateContent({
-            contents: [
-                { role: "user", parts: [{ text: prompt }] }
-            ],
-            systemInstruction: HYPE_SCORE_RUBRIC,
-            tools: [{ googleSearchRetrieval: { dynamicRetrievalConfig: { mode: "MODE_DYNAMIC", dynamicThreshold: 0.3 } } } as any],
-            generationConfig: {
-                responseMimeType: "application/json",
+function setCache(key: string, data: string): void {
+    cache.set(key, { data, expires: Date.now() + CACHE_TTL_MS });
+}
+
+async function rateLimitAcquire(): Promise<void> {
+    const now = Date.now();
+    const cutoff = now - RATE_LIMIT_WINDOW_MS;
+    while (requestTimestamps.length > 0 && requestTimestamps[0] < cutoff) {
+        requestTimestamps.shift();
+    }
+    if (requestTimestamps.length >= MAX_REQUESTS_PER_MINUTE) {
+        const waitMs = requestTimestamps[0] + RATE_LIMIT_WINDOW_MS - now + 100;
+        await new Promise((r) => setTimeout(r, Math.max(waitMs, 0)));
+        return rateLimitAcquire();
+    }
+    requestTimestamps.push(Date.now());
+}
+
+async function generateJson(systemPrompt: string, userPrompt: string): Promise<string> {
+    if (!genAI) throw new Error("GEMINI_API_KEY is not set");
+    const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash-lite",
+        generationConfig: { responseMimeType: "application/json" },
+    });
+    const result = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }],
+    });
+    return result.response.text();
+}
+
+/** Fetch recent news for tickers from Finnhub (free tier, no billing). */
+async function fetchStockNewsContext(tickers: string[]): Promise<string> {
+    if (!FINNHUB_KEY || tickers.length === 0) return "";
+    const to = new Date();
+    const from = new Date(to);
+    from.setDate(from.getDate() - 30);
+    const fromStr = from.toISOString().split("T")[0];
+    const toStr = to.toISOString().split("T")[0];
+    const results: string[] = [];
+    for (const symbol of tickers.slice(0, 5)) {
+        try {
+            const res = await fetch(
+                `https://finnhub.io/api/v1/company-news?symbol=${symbol}&from=${fromStr}&to=${toStr}&token=${FINNHUB_KEY}`,
+                { next: { revalidate: 300 } }
+            );
+            const data = (await res.json()) as { headline?: string; summary?: string; source?: string; datetime?: number }[];
+            if (Array.isArray(data) && data.length > 0) {
+                const items = data.slice(0, 8).map((n) => `- ${n.headline || ""} (${n.source || "news"})`);
+                results.push(`[${symbol} recent news]\n${items.join("\n")}`);
             }
-        });
+        } catch {
+            /* ignore */
+        }
+    }
+    return results.length > 0 ? `\n\nRECENT NEWS CONTEXT (use this for time-relevant analysis):\n${results.join("\n\n")}` : "";
+}
 
-        const responseText = result.response.text();
-        return JSON.parse(responseText);
+export type PortfolioPulseResult = {
+    insight: string;
+    overvaluation: number;
+    growthPotential: number;
+    politicalClimate: number;
+};
+
+export type AccountInsightItem = {
+    ticker: string;
+    name: string;
+    movement: string;
+    drivers: string;
+    interpretation: string;
+};
+
+export type AccountInsightsResult = {
+    items: AccountInsightItem[];
+    portfolioObservation: string;
+    watchItems: string[];
+};
+
+export type LookoutItem = {
+    ticker: string | null;
+    name: string;
+    item: string;
+    whyItMatters: string;
+    signalType: "risk" | "opportunity" | "watch";
+};
+
+export type LookoutResult = {
+    items: LookoutItem[];
+};
+
+export type TickerOverviewResult = {
+    priceBehavior: string;
+    sentiment: string;
+    hypeScore: number;
+    fundamentalContext: string;
+    risks: string[];
+    outlook: string;
+};
+
+export async function getPortfolioPulse(
+    timeframe: string,
+    holdings: { ticker: string; name: string; shares: number; costBasis: number }[]
+): Promise<PortfolioPulseResult | null> {
+    if (!genAI) return null;
+    const cacheKey = `pulse:${timeframe}:${holdings.map((h) => h.ticker).sort().join(",")}`;
+    const cached = getCached(cacheKey);
+    if (cached) return JSON.parse(cached) as PortfolioPulseResult;
+    try {
+        await rateLimitAcquire();
+        const newsContext = await fetchStockNewsContext(holdings.map((h) => h.ticker));
+        const userPrompt = `You are operating in Portfolio Pulse mode. Follow the rules in GEMINIRULES.MD strictly.
+
+Timeframe: ${timeframe}
+User holdings: ${JSON.stringify(holdings)}
+${newsContext}
+
+Generate a portfolio-level analysis based on the news context above and your knowledge. Output JSON:
+{
+  "insight": "<2-4 paragraph analysis of sector clustering, concentration risks, shared tailwinds, cross-holding themes>",
+  "overvaluation": <0-100 score>,
+  "growthPotential": <0-100 score>,
+  "politicalClimate": <0-100 score>
+}`;
+        const text = await generateJson(GEMINIRULES, userPrompt);
+        setCache(cacheKey, text);
+        return JSON.parse(text) as PortfolioPulseResult;
+    } catch (e) {
+        console.error("getPortfolioPulse error:", e);
+        return null;
+    }
+}
+
+export async function getAccountInsights(
+    timeframe: string,
+    holdings: { ticker: string; name: string; shares: number }[],
+    transactions: { ticker: string; type: string; shares: number; timestamp: string }[]
+): Promise<AccountInsightsResult | null> {
+    if (!genAI) return null;
+    const txSlice = transactions.slice(-20).map((t) => `${t.ticker}:${t.type}:${t.shares}:${t.timestamp}`);
+    const cacheKey = `insights:${timeframe}:${holdings.map((h) => h.ticker).sort().join(",")}:${txSlice.join("|")}`;
+    const cached = getCached(cacheKey);
+    if (cached) return JSON.parse(cached) as AccountInsightsResult;
+    try {
+        await rateLimitAcquire();
+        const tickers = [...new Set(holdings.map((h) => h.ticker))];
+        const newsContext = await fetchStockNewsContext(tickers);
+        const userPrompt = `You are operating in Account Insights mode. Follow the rules in GEMINIRULES.MD strictly.
+
+Timeframe: ${timeframe}
+Holdings: ${JSON.stringify(holdings)}
+Recent transactions: ${JSON.stringify(transactions.slice(-20))}
+${newsContext}
+
+Explain movements in the user's positions using the news context above. Output JSON:
+{
+  "items": [{"ticker": "...", "name": "...", "movement": "...", "drivers": "...", "interpretation": "..."}],
+  "portfolioObservation": "<summary of what positions collectively indicate>",
+  "watchItems": ["<string>", ...]
+}`;
+        const text = await generateJson(GEMINIRULES, userPrompt);
+        setCache(cacheKey, text);
+        return JSON.parse(text) as AccountInsightsResult;
+    } catch (e) {
+        console.error("getAccountInsights error:", e);
+        return null;
+    }
+}
+
+export async function getLookout(
+    timeframe: string,
+    holdings: { ticker: string; name: string }[],
+    watchlist: string[] = []
+): Promise<LookoutResult | null> {
+    if (!genAI) return null;
+    const cacheKey = `lookout:${timeframe}:${holdings.map((h) => h.ticker).sort().join(",")}:${watchlist.sort().join(",")}`;
+    const cached = getCached(cacheKey);
+    if (cached) return JSON.parse(cached) as LookoutResult;
+    try {
+        await rateLimitAcquire();
+        const tickers = [...new Set([...holdings.map((h) => h.ticker), ...watchlist])];
+        const newsContext = await fetchStockNewsContext(tickers);
+        const userPrompt = `You are operating in Lookout mode. Follow the rules in GEMINIRULES.MD strictly.
+
+Timeframe: ${timeframe}
+User holdings: ${JSON.stringify(holdings)}
+Watchlist: ${JSON.stringify(watchlist)}
+${newsContext}
+
+Surface early signals within the timeframe using the news context above. For each item, include the stock ticker if it's a specific company. Output JSON:
+{
+  "items": [
+    {"ticker": "AAPL" or null, "name": "Apple Inc", "item": "<brief description>", "whyItMatters": "<why for user>", "signalType": "risk"|"opportunity"|"watch"}
+  ]
+}`;
+        const text = await generateJson(GEMINIRULES, userPrompt);
+        setCache(cacheKey, text);
+        return JSON.parse(text) as LookoutResult;
+    } catch (e) {
+        console.error("getLookout error:", e);
+        return null;
+    }
+}
+
+export async function getTickerOverview(
+    ticker: string,
+    companyName: string,
+    timeframe: string = "1M"
+): Promise<TickerOverviewResult | null> {
+    if (!genAI) return null;
+    const cacheKey = `overview:${ticker}:${timeframe}`;
+    const cached = getCached(cacheKey);
+    if (cached) return JSON.parse(cached) as TickerOverviewResult;
+    try {
+        await rateLimitAcquire();
+        const newsContext = await fetchStockNewsContext([ticker]);
+        const userPrompt = `You are generating a single-ticker overview. Follow the SINGLE TICKER OVERVIEWS section in GEMINIRULES.MD strictly.
+
+Ticker: ${ticker}
+Company: ${companyName}
+Timeframe: ${timeframe}
+${newsContext}
+
+Analyze using the news context above and your knowledge. Output JSON:
+{
+  "priceBehavior": "<recent trend, volatility, momentum shifts>",
+  "sentiment": "<investor sentiment evaluation>",
+  "hypeScore": <0-100>,
+  "fundamentalContext": "<growth profile, perceived positioning>",
+  "risks": ["<risk1>", "<risk2>", ...],
+  "outlook": "<bullish|neutral|bearish, short|medium|long term, reasoning>"
+}`;
+        const text = await generateJson(GEMINIRULES, userPrompt);
+        setCache(cacheKey, text);
+        return JSON.parse(text) as TickerOverviewResult;
+    } catch (e) {
+        console.error("getTickerOverview error:", e);
+        return null;
+    }
+}
+
+export async function getInvestorHypeScore(
+    ticker: string,
+    companyName: string
+): Promise<{ score: number | null; points: string[] }> {
+    if (!genAI) {
+        return {
+            score: null,
+            points: ["Add GEMINI_API_KEY to .env.local to enable AI analysis."],
+        };
+    }
+    try {
+        const cacheKey = `hype:${ticker}`;
+        const cached = getCached(cacheKey);
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            return { score: parsed.score ?? null, points: parsed.points ?? [] };
+        }
+        await rateLimitAcquire();
+        const newsContext = await fetchStockNewsContext([ticker]);
+        const userPrompt = `Analyze the current investor hype for ${companyName} (${ticker}). Use the HYPESCORE.MD rubric. Follow the 30-day observation window and five-dimension scoring. Use the news context below and your knowledge of retail attention, narrative strength, and price behavior.
+${newsContext}
+
+Output strictly as JSON:
+{
+  "score": <number 0-100>,
+  "points": ["<short bullet 1>", "<short bullet 2>"]
+}`;
+        const text = await generateJson(HYPESCORE_RULES, userPrompt);
+        const parsed = JSON.parse(text);
+        setCache(cacheKey, text);
+        return { score: parsed.score ?? null, points: parsed.points ?? [] };
     } catch (error) {
         console.error("Failed to generate hype score:", error);
         return {
             score: null,
-            points: ["Failed to generate analysis.", "Please try again later."]
+            points: ["Failed to generate analysis.", "Please try again later."],
         };
     }
-    */
 }
