@@ -34,14 +34,9 @@ export default function Home() {
                         <span className="font-semibold text-lg tracking-tight">CashMere</span>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        <Link href="/login" className="text-sm text-[#a8a8a0] hover:text-[#4ade9a] transition">
-                            Sign In
-                        </Link>
-                        <Link href="/login" className="px-6 py-2 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-full text-sm font-semibold transition">
-                            Get Started
-                        </Link>
-                    </div>
+                    <Link href="/login" className="px-6 py-2 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-full text-sm font-semibold transition">
+                        Continue
+                    </Link>
                 </div>
             </nav>
 
