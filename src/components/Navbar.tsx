@@ -1,37 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useRef, useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { LayoutDashboard, TrendingUp, Rss, Users, Settings } from "lucide-react";
+import { ExpandableTabs } from "@/components/ui/expandable-tabs";
 
 const links = [
-  { href: "/portfolio", label: "Portfolio" },
-  { href: "/markets", label: "Markets" },
-  { href: "/social", label: "Feed" },
-  { href: "/friends", label: "Friends" },
-  { href: "/settings", label: "Settings" },
+  { href: "/portfolio", label: "Portfolio", icon: LayoutDashboard },
+  { href: "/markets", label: "Markets", icon: TrendingUp },
+  { href: "/social", label: "Feed", icon: Rss },
+  { href: "/friends", label: "Friends", icon: Users },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
+
+const tabs = links.map(l => ({ title: l.label, icon: l.icon }));
 
 export default function Navbar() {
   const pathname = usePathname();
-  const tabRefs = useRef<(HTMLAnchorElement | null)[]>([]);
-  const [pill, setPill] = useState<{ left: number; width: number } | null>(null);
-
-  const activeIdx = Math.max(0, links.findIndex((l) => l.href === pathname));
-
-  useEffect(() => {
-    const el = tabRefs.current[activeIdx];
-    if (el) setPill({ left: el.offsetLeft, width: el.offsetWidth });
-  }, [activeIdx]);
-
-  useEffect(() => {
-    const update = () => {
-      const el = tabRefs.current[activeIdx];
-      if (el) setPill({ left: el.offsetLeft, width: el.offsetWidth });
-    };
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, [activeIdx]);
+  const router = useRouter();
+  const activeIndex = links.findIndex(l => l.href === pathname);
 
   return (
     <nav className="fixed top-0 w-full z-50 flex items-center justify-center pt-4 pb-4 bg-black pointer-events-none">
@@ -44,49 +31,19 @@ export default function Navbar() {
           <div className="w-6 h-6 bg-[#4ade9a] rounded-md flex items-center justify-center shrink-0">
             <span className="text-[#0d1a14] font-bold text-xs">C</span>
           </div>
-          <span className="font-semibold text-sm tracking-tight text-[#f0ede8] hidden sm:block">
+          <span className="font-semibold text-sm tracking-tight text-[#f0ede8] hidden sm:block pr-1">
             CashMere
           </span>
         </Link>
 
-        {/* Divider */}
-        <div className="w-px h-5 bg-[#2a3d30]/60 mr-2 shrink-0" />
-
-        {/* Tabs */}
-        <div className="relative flex items-center">
-          {/* Sliding pill */}
-          {pill && (
-            <span
-              className="absolute inset-y-0 rounded-full bg-[#4ade9a] pointer-events-none"
-              style={{
-                left: pill.left,
-                width: pill.width,
-                transition:
-                  "left 300ms cubic-bezier(0.4,0,0.2,1), width 300ms cubic-bezier(0.4,0,0.2,1)",
-              }}
-            />
-          )}
-
-          {links.map((link, i) => {
-            const isActive = activeIdx === i;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                ref={(el) => {
-                  tabRefs.current[i] = el;
-                }}
-                className={`relative z-10 px-5 py-2 text-sm font-semibold rounded-full whitespace-nowrap transition-colors duration-200 ${
-                  isActive
-                    ? "text-[#0d1a14]"
-                    : "text-[#a8a8a0] hover:text-[#f0ede8]"
-                }`}
-              >
-                {link.label}
-              </Link>
-            );
-          })}
-        </div>
+        {/* ExpandableTabs nav */}
+        <ExpandableTabs
+          tabs={tabs}
+          activeIndex={activeIndex === -1 ? null : activeIndex}
+          onChange={(i) => {
+            if (i !== null && links[i]) router.push(links[i].href);
+          }}
+        />
       </div>
     </nav>
   );
