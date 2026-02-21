@@ -62,6 +62,90 @@ export async function getMarketIndex(symbol: string = "^GSPC") {
     }
 }
 
+export async function searchTickers(query: string): Promise<{ symbol: string; name: string; exchange?: string; type?: string }[]> {
+    if (!query || query.trim().length < 2) return [];
+    try {
+        const res = await fetch(
+            `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query.trim())}&quotesCount=10`,
+            { headers: { "User-Agent": "Mozilla/5.0" }, next: { revalidate: 60 } }
+        );
+        if (!res.ok) return [];
+        const json = await res.json();
+        const quotes = json.quotes || [];
+        return quotes
+            .filter((q: { symbol?: string; shortname?: string }) => q.symbol && q.shortname)
+            .map((q: { symbol: string; shortname: string; longname?: string; exchange?: string; quoteType?: string }) => ({
+                symbol: q.symbol,
+                name: q.shortname || q.longname || q.symbol,
+                exchange: q.exchange,
+                type: q.quoteType,
+            }));
+    } catch (error) {
+        console.error("Failed to search tickers:", error);
+        return [];
+    }
+}
+
+export async function getQuote(symbol: string): Promise<{ symbol: string; price: number; change: number; changesPercentage: number; name?: string } | null> {
+    try {
+        const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`, {
+            headers: { "User-Agent": "Mozilla/5.0" },
+            next: { revalidate: 60 },
+        });
+        if (!res.ok) return null;
+        const json = await res.json();
+        const result = json.chart?.result?.[0]?.meta;
+        if (!result) return null;
+        const price = result.regularMarketPrice;
+        const prevClose = result.chartPreviousClose || result.previousClose;
+        const change = price - prevClose;
+        return {
+            symbol,
+            price,
+            change,
+            changesPercentage: (change / prevClose) * 100,
+            name: result.shortName || result.longName || symbol,
+        };
+    } catch (error) {
+        console.error("Failed to fetch quote:", error);
+        return null;
+    }
+}
+
+export async function getChartData(symbol: string): Promise<{ date: string; open: number; high: number; low: number; close: number; volume: number }[]> {
+    try {
+        const res = await fetch(
+            `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=20y`,
+            { headers: { "User-Agent": "Mozilla/5.0" }, next: { revalidate: 900 } }
+        );
+        if (!res.ok) return [];
+        const data = await res.json();
+        const result = data.chart?.result?.[0];
+        if (!result) return [];
+        const timestamps = result.timestamp;
+        const quotes = result.indicators?.quote?.[0];
+        if (!timestamps || !quotes) return [];
+        const chartData: { date: string; open: number; high: number; low: number; close: number; volume: number }[] = [];
+        for (let j = 0; j < timestamps.length; j++) {
+            if (quotes.close[j] !== null) {
+                const dateObj = new Date(timestamps[j] * 1000);
+                chartData.push({
+                    date: dateObj.toISOString().split("T")[0],
+                    open: quotes.open[j] ?? quotes.close[j],
+                    high: quotes.high[j] ?? quotes.close[j],
+                    low: quotes.low[j] ?? quotes.close[j],
+                    close: quotes.close[j],
+                    volume: quotes.volume[j] ?? 0,
+                });
+            }
+        }
+        return chartData.slice(-5000);
+    } catch (error) {
+        console.error("Failed to fetch chart data:", error);
+        return [];
+    }
+}
+
 export async function getBatchQuotes(symbols: string[]) {
     try {
         const symbolString = symbols.sort().join(",");
