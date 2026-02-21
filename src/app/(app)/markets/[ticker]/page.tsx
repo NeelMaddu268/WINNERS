@@ -4,11 +4,13 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { getInvestorHypeScore } from "@/app/actions/gemini";
-import { getQuote, getChartData } from "@/app/actions/fmp";
+import { getQuote, getChartData, getPriceForDate } from "@/app/actions/fmp";
+import { recalculatePortfolioFromTransactions } from "@/app/actions/portfolio";
 
 type TickerItem = { ticker: string; name: string; price: number; diff: string; isPositive: boolean };
+type Position = { ticker: string; name: string; shares: number; avgCost: number; costBasis: number; priceAtPurchase?: number };
 
 export default function TickerPage() {
     const params = useParams();
@@ -18,10 +20,16 @@ export default function TickerPage() {
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
     const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
-    const [shares, setShares] = useState("1");
+    const [tradeMode, setTradeMode] = useState<"buy" | "sell">("buy");
+    const [inputMode, setInputMode] = useState<"shares" | "dollars">("shares");
+    const [sharesInput, setSharesInput] = useState("1");
+    const [dollarsInput, setDollarsInput] = useState("");
     const [isTrading, setIsTrading] = useState(false);
     const [tradeError, setTradeError] = useState("");
     const [tradeSuccess, setTradeSuccess] = useState(false);
+    const [userPosition, setUserPosition] = useState<Position | null>(null);
+    const [chartPosition, setChartPosition] = useState<Position | null>(null);
+    const [chartDisplayBounds, setChartDisplayBounds] = useState<{ min: number; max: number } | null>(null);
     const [activeTimeframe, setActiveTimeframe] = useState("1M");
     const [fullChartData, setFullChartData] = useState<any[]>([]);
     const [historicalChartPath, setHistoricalChartPath] = useState("M 0,40 L 50,50 L 100,40");
@@ -53,6 +61,31 @@ export default function TickerPage() {
             setLoading(false);
         });
     }, [tickerSymbol]);
+
+    // Fetch user position for chart (derived from transaction history)
+    useEffect(() => {
+        if (!tickerData || !auth.currentUser) {
+            setChartPosition(null);
+            return;
+        }
+        const fetchChartPosition = async () => {
+            const userRef = doc(db, "users", auth.currentUser!.uid);
+            const snap = await getDoc(userRef);
+            if (snap.exists()) {
+                const transactions = snap.data().transactionHistory || [];
+                const { portfolio } = await recalculatePortfolioFromTransactions(transactions);
+                const pos = portfolio.find((p) => p.ticker === tickerData.ticker);
+                if (pos && pos.shares > 0) {
+                    setChartPosition(pos);
+                } else {
+                    setChartPosition(null);
+                }
+            } else {
+                setChartPosition(null);
+            }
+        };
+        fetchChartPosition();
+    }, [tickerData, auth.currentUser]);
 
     useEffect(() => {
         if (!tickerData) return;
@@ -174,6 +207,7 @@ export default function TickerPage() {
             }
             setHistoricalChartPath(path);
             setChartPriceRange({ min, max });
+            setChartDisplayBounds({ min: displayMin, max: displayMax });
             const mean = (min + max) / 2;
             const meanY = 50 - ((mean - displayMin) / scaleRange) * 50;
             setChartGradientMeanOffset(Math.max(0.05, Math.min(0.95, meanY / 50)));
@@ -188,43 +222,85 @@ export default function TickerPage() {
             setChartPriceRange(null);
             setChartDateLabels([]);
             setChartGradientMeanOffset(0.5);
+            setChartDisplayBounds(null);
         }
     }, [activeTimeframe, fullChartData]);
 
+    // Fetch user position when modal opens (derived from transaction history)
+    useEffect(() => {
+        if (!isTradeModalOpen || !auth.currentUser || !tickerData) return;
+        const fetchPosition = async () => {
+            const userRef = doc(db, "users", auth.currentUser!.uid);
+            const snap = await getDoc(userRef);
+            if (snap.exists()) {
+                const transactions = snap.data().transactionHistory || [];
+                const { portfolio } = await recalculatePortfolioFromTransactions(transactions);
+                const pos = portfolio.find((p) => p.ticker === tickerData.ticker);
+                setUserPosition(pos && pos.shares > 0 ? pos : null);
+            } else {
+                setUserPosition(null);
+            }
+        };
+        fetchPosition();
+    }, [isTradeModalOpen, tickerData, auth.currentUser]);
+
+    const price = tickerData?.price ?? 0;
+    const sharesFromInput = inputMode === "shares"
+        ? parseFloat(sharesInput || "0")
+        : price > 0 ? parseFloat(dollarsInput || "0") / price : 0;
+    const dollarsFromInput = sharesFromInput * price;
+
     const handleTrade = async () => {
         if (!auth.currentUser || !tickerData) return;
+        if (sharesFromInput <= 0) {
+            setTradeError("Enter a valid amount.");
+            return;
+        }
         setIsTrading(true);
         setTradeError("");
-        const cost = parseFloat(shares || "0") * tickerData.price;
         try {
             const userRef = doc(db, "users", auth.currentUser.uid);
             const userSnap = await getDoc(userRef);
-            if (userSnap.exists()) {
-                const userData = userSnap.data();
-                const currentBalance = userData.cashBalance || 0;
-                if (currentBalance < cost) {
+            if (!userSnap.exists()) {
+                setTradeError("User not found.");
+                setIsTrading(false);
+                return;
+            }
+            const transactionHistory = userSnap.data().transactionHistory || [];
+            const timestamp = new Date().toISOString();
+            const execPrice = (await getPriceForDate(tickerData.ticker, timestamp)) ?? price;
+            const shares = inputMode === "shares" ? sharesFromInput : parseFloat(dollarsInput || "0") / execPrice;
+            const total = shares * execPrice;
+
+            const { portfolio, cashBalance } = await recalculatePortfolioFromTransactions(transactionHistory);
+            const pos = portfolio.find((p) => p.ticker === tickerData.ticker);
+            const existingShares = pos?.shares ?? 0;
+
+            if (tradeMode === "buy") {
+                if (cashBalance < total) {
                     setTradeError("Insufficient funds.");
                     setIsTrading(false);
                     return;
                 }
-                await updateDoc(userRef, {
-                    cashBalance: currentBalance - cost,
-                    portfolio: arrayUnion({
-                        ticker: tickerData.ticker,
-                        name: tickerData.name,
-                        shares: parseFloat(shares),
-                        priceAtPurchase: tickerData.price,
-                        costBasis: cost,
-                        timestamp: new Date().toISOString(),
-                    }),
-                });
-                setTradeSuccess(true);
-                setTimeout(() => {
-                    setIsTradeModalOpen(false);
-                    setTradeSuccess(false);
-                    router.push("/portfolio");
-                }, 1500);
+            } else {
+                if (existingShares < shares) {
+                    setTradeError(`You only have ${existingShares} shares available to sell.`);
+                    setIsTrading(false);
+                    return;
+                }
             }
+
+            const tx = { type: tradeMode, ticker: tickerData.ticker, name: tickerData.name, shares, timestamp };
+            await updateDoc(userRef, {
+                transactionHistory: [...transactionHistory, tx],
+            });
+            setTradeSuccess(true);
+            setTimeout(() => {
+                setIsTradeModalOpen(false);
+                setTradeSuccess(false);
+                setUserPosition(null);
+                router.push("/portfolio");
+            }, 1500);
         } catch (error) {
             console.error(error);
             setTradeError("Failed to execute trade.");
@@ -327,6 +403,29 @@ export default function TickerPage() {
                                 vectorEffect="non-scaling-stroke"
                                 className="transition-all duration-700 ease-in-out"
                             />
+                            {chartPosition && chartPosition.shares > 0 && chartDisplayBounds && (
+                                <>
+                                    <line
+                                        x1="0"
+                                        y1={50 - ((chartPosition.avgCost - chartDisplayBounds.min) / (chartDisplayBounds.max - chartDisplayBounds.min)) * 50}
+                                        x2="100"
+                                        y2={50 - ((chartPosition.avgCost - chartDisplayBounds.min) / (chartDisplayBounds.max - chartDisplayBounds.min)) * 50}
+                                        stroke="#a78bfa"
+                                        strokeWidth="0.5"
+                                        strokeDasharray="2 2"
+                                        opacity="0.9"
+                                    />
+                                    <text
+                                        x="2"
+                                        y={50 - ((chartPosition.avgCost - chartDisplayBounds.min) / (chartDisplayBounds.max - chartDisplayBounds.min)) * 50 - 1}
+                                        fill="#a78bfa"
+                                        fontSize="3"
+                                        fontWeight="bold"
+                                    >
+                                        My position (${chartPosition.avgCost.toFixed(2)})
+                                    </text>
+                                </>
+                            )}
                         </svg>
                     </div>
                     {chartDateLabels.length > 0 && (
@@ -358,7 +457,14 @@ export default function TickerPage() {
                 {/* Trade Button */}
                 <div className="mt-8">
                     <button
-                        onClick={() => setIsTradeModalOpen(true)}
+                        onClick={() => {
+                            setTradeMode("buy");
+                            setInputMode("shares");
+                            setSharesInput("1");
+                            setDollarsInput("");
+                            setTradeError("");
+                            setIsTradeModalOpen(true);
+                        }}
                         className={`w-full py-4 rounded-full font-bold text-lg transition shadow-lg ${
                             tickerData.isPositive
                                 ? "bg-[#00c805] hover:bg-[#00e306] text-black shadow-[#00c805]/20"
@@ -454,7 +560,7 @@ export default function TickerPage() {
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
                     <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold">Buy {tickerData.ticker}</h3>
+                            <h3 className="text-xl font-bold">{tradeMode === "buy" ? "Buy" : "Sell"} {tickerData.ticker}</h3>
                             <button onClick={() => setIsTradeModalOpen(false)} className="text-zinc-400 hover:text-white bg-zinc-800 w-8 h-8 rounded-full flex items-center justify-center">
                                 ✕
                             </button>
@@ -467,36 +573,94 @@ export default function TickerPage() {
                                     </svg>
                                 </div>
                                 <h4 className="text-2xl font-bold mb-2">Order Complete</h4>
-                                <p className="text-zinc-400 text-sm">Your {tickerData.ticker} shares have been added to your portfolio.</p>
+                                <p className="text-zinc-400 text-sm">Your {tickerData.ticker} {tradeMode === "buy" ? "purchase" : "sale"} has been executed.</p>
                             </div>
                         ) : (
                             <>
-                                <div className="flex justify-between items-center bg-black/50 p-4 rounded-xl mb-6 border border-zinc-800">
+                                <div className="flex rounded-full bg-zinc-800 p-1 mb-6">
+                                    <button
+                                        onClick={() => tradeMode !== "buy" && setTradeMode("buy")}
+                                        className={`flex-1 py-2 rounded-full text-sm font-bold transition ${tradeMode === "buy" ? "bg-[#00c805] text-black" : "text-zinc-400 hover:text-white"}`}
+                                    >
+                                        Buy
+                                    </button>
+                                    <button
+                                        onClick={() => tradeMode !== "sell" && setTradeMode("sell")}
+                                        disabled={!userPosition || userPosition.shares <= 0}
+                                        className={`flex-1 py-2 rounded-full text-sm font-bold transition ${tradeMode === "sell" ? "bg-red-500 text-white" : "text-zinc-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"}`}
+                                    >
+                                        Sell
+                                    </button>
+                                </div>
+                                {tradeMode === "sell" && userPosition && (
+                                    <div className="mb-4 p-3 bg-zinc-800/50 rounded-xl text-sm text-zinc-400">
+                                        Shares available: <span className="font-bold text-white">{userPosition.shares}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between items-center bg-black/50 p-4 rounded-xl mb-4 border border-zinc-800">
                                     <span className="text-zinc-400">Current Price</span>
-                                    <span className="font-bold text-lg">${tickerData.price.toFixed(2)}</span>
+                                    <span className="font-bold text-lg">${price.toFixed(2)}</span>
+                                </div>
+                                <div className="flex rounded-full bg-zinc-800 p-1 mb-4">
+                                    <button
+                                        onClick={() => setInputMode("shares")}
+                                        className={`flex-1 py-1.5 rounded-full text-xs font-bold transition ${inputMode === "shares" ? "bg-zinc-600 text-white" : "text-zinc-400 hover:text-white"}`}
+                                    >
+                                        Shares
+                                    </button>
+                                    <button
+                                        onClick={() => setInputMode("dollars")}
+                                        className={`flex-1 py-1.5 rounded-full text-xs font-bold transition ${inputMode === "dollars" ? "bg-zinc-600 text-white" : "text-zinc-400 hover:text-white"}`}
+                                    >
+                                        Dollars
+                                    </button>
                                 </div>
                                 <div className="mb-6">
-                                    <label className="block text-sm text-zinc-400 mb-2">Number of Shares</label>
-                                    <input
-                                        type="number"
-                                        value={shares}
-                                        onChange={(e) => setShares(e.target.value)}
-                                        min="0"
-                                        step="1"
-                                        className="w-full bg-black/50 border border-zinc-800 rounded-xl p-4 text-2xl font-bold focus:outline-none focus:border-[#00c805] transition"
-                                    />
+                                    {inputMode === "shares" ? (
+                                        <>
+                                            <label className="block text-sm text-zinc-400 mb-2">Number of Shares</label>
+                                            <input
+                                                type="number"
+                                                value={sharesInput}
+                                                onChange={(e) => setSharesInput(e.target.value)}
+                                                min="0"
+                                                step="0.0001"
+                                                className="w-full bg-black/50 border border-zinc-800 rounded-xl p-4 text-2xl font-bold focus:outline-none focus:border-[#00c805] transition"
+                                            />
+                                        </>
+                                    ) : (
+                                        <>
+                                            <label className="block text-sm text-zinc-400 mb-2">Amount ($)</label>
+                                            <input
+                                                type="number"
+                                                value={dollarsInput}
+                                                onChange={(e) => setDollarsInput(e.target.value)}
+                                                min="0"
+                                                step="0.01"
+                                                placeholder="0.00"
+                                                className="w-full bg-black/50 border border-zinc-800 rounded-xl p-4 text-2xl font-bold focus:outline-none focus:border-[#00c805] transition"
+                                            />
+                                        </>
+                                    )}
                                 </div>
                                 <div className="flex justify-between items-center mb-8 px-2">
-                                    <span className="text-zinc-400 font-medium">Estimated Cost</span>
-                                    <span className="font-bold text-xl">${(parseFloat(shares || "0") * tickerData.price).toFixed(2)}</span>
+                                    <span className="text-zinc-400 font-medium">{tradeMode === "buy" ? "Estimated Cost" : "Estimated Proceeds"}</span>
+                                    <span className="font-bold text-xl">${dollarsFromInput.toFixed(2)}</span>
                                 </div>
+                                {inputMode === "dollars" && sharesFromInput > 0 && (
+                                    <div className="mb-4 px-2 text-sm text-zinc-500">≈ {sharesFromInput.toLocaleString(undefined, { maximumFractionDigits: 4 })} shares</div>
+                                )}
                                 {tradeError && <div className="text-red-500 text-sm mb-4 px-2 font-medium">{tradeError}</div>}
                                 <button
                                     onClick={handleTrade}
-                                    disabled={isTrading || !shares || parseFloat(shares) <= 0}
-                                    className="w-full py-4 bg-[#00c805] hover:bg-[#00e306] disabled:opacity-50 disabled:hover:bg-[#00c805] text-black rounded-2xl font-bold text-lg transition"
+                                    disabled={isTrading || sharesFromInput <= 0}
+                                    className={`w-full py-4 rounded-2xl font-bold text-lg transition disabled:opacity-50 ${
+                                        tradeMode === "buy"
+                                            ? "bg-[#00c805] hover:bg-[#00e306] text-black"
+                                            : "bg-red-500 hover:bg-red-600 text-white"
+                                    }`}
                                 >
-                                    {isTrading ? "Processing..." : "Confirm Review"}
+                                    {isTrading ? "Processing..." : `${tradeMode === "buy" ? "Buy" : "Sell"} ${tickerData.ticker}`}
                                 </button>
                             </>
                         )}

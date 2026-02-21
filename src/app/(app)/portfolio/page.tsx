@@ -1,29 +1,62 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { auth, db } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
+import { recalculatePortfolioFromTransactions, type Transaction } from "@/app/actions/portfolio";
+
+type PortfolioPosition = { ticker: string; name: string; shares: number; avgCost: number; costBasis: number; priceAtPurchase?: number };
 
 export default function PortfolioPage() {
     const [candleData, setCandleData] = useState<any[]>([]);
-    const [portfolio, setPortfolio] = useState<any[]>([]);
-    const [cashBalance, setCashBalance] = useState<number>(0);
+    const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
+    const [portfolio, setPortfolio] = useState<PortfolioPosition[]>([]);
+    const [cashBalance, setCashBalance] = useState<number>(10000);
+    const [transactionsWithPrices, setTransactionsWithPrices] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
-    const [selectedAsset, setSelectedAsset] = useState<any | null>(null);
+    const [selectedAsset, setSelectedAsset] = useState<PortfolioPosition | null>(null);
     const [livePrices, setLivePrices] = useState<Record<string, number>>({});
+    const [activeTab, setActiveTab] = useState<"assets" | "history">("assets");
+
+    // Merge duplicate tickers: sum shares, weighted avg cost. Remove positions with 0 shares.
+    const mergedPositions = useMemo(() => {
+        const byTicker = new Map<string, { name: string; shares: number; costBasis: number }>();
+        for (const p of portfolio) {
+            const shares = p.shares ?? 0;
+            const costBasis = p.costBasis ?? (shares * (p.avgCost ?? p.priceAtPurchase ?? 0));
+            const existing = byTicker.get(p.ticker);
+            if (existing) {
+                existing.shares += shares;
+                existing.costBasis += costBasis;
+            } else {
+                byTicker.set(p.ticker, { name: p.name ?? p.ticker, shares, costBasis });
+            }
+        }
+        return Array.from(byTicker.entries())
+            .filter(([, v]) => v.shares > 0)
+            .map(([ticker, v]) => ({
+                ticker,
+                name: v.name,
+                shares: v.shares,
+                costBasis: v.costBasis,
+                avgCost: v.costBasis / v.shares,
+            }));
+    }, [portfolio]);
 
     useEffect(() => {
-        if (portfolio.length > 0) {
-            const symbols = Array.from(new Set(portfolio.map(p => p.ticker)));
+        if (mergedPositions.length > 0) {
+            const symbols = mergedPositions.map(p => p.ticker);
             import("@/app/actions/fmp").then(({ getBatchQuotes }) => {
-                getBatchQuotes(symbols).then(data => {
+                getBatchQuotes(symbols).then((data: any[]) => {
                     const priceMap: Record<string, number> = {};
                     data.forEach((q: any) => { priceMap[q.symbol] = q.price; });
                     setLivePrices(priceMap);
                 });
             });
+        } else {
+            setLivePrices({});
         }
-    }, [portfolio]);
+    }, [mergedPositions]);
 
     useEffect(() => {
         let unsubscribeDoc: () => void;
@@ -32,12 +65,10 @@ export default function PortfolioPage() {
             if (user) {
                 const userRef = doc(db, "users", user.uid);
 
-                // Set up real-time listener
                 unsubscribeDoc = onSnapshot(userRef, (docSnap) => {
                     if (docSnap.exists()) {
                         const data = docSnap.data();
-                        setPortfolio(data.portfolio || []);
-                        setCashBalance(data.cashBalance || 0);
+                        setTransactionHistory(data.transactionHistory || []);
                     }
                     setLoading(false);
                 }, (error) => {
@@ -45,8 +76,10 @@ export default function PortfolioPage() {
                     setLoading(false);
                 });
             } else {
+                setTransactionHistory([]);
                 setPortfolio([]);
-                setCashBalance(0);
+                setCashBalance(10000);
+                setTransactionsWithPrices([]);
                 setLoading(false);
                 if (unsubscribeDoc) unsubscribeDoc();
             }
@@ -57,6 +90,21 @@ export default function PortfolioPage() {
             if (unsubscribeDoc) unsubscribeDoc();
         };
     }, []);
+
+    // Derive portfolio and cash from transaction history (price based on timestamp)
+    useEffect(() => {
+        if (transactionHistory.length === 0) {
+            setPortfolio([]);
+            setCashBalance(10000);
+            setTransactionsWithPrices([]);
+            return;
+        }
+        recalculatePortfolioFromTransactions(transactionHistory).then(({ portfolio: p, cashBalance: c, transactionsWithPrices: twp }) => {
+            setPortfolio(p);
+            setCashBalance(c);
+            setTransactionsWithPrices(twp);
+        });
+    }, [transactionHistory]);
 
     useEffect(() => {
         // Generate mock candlestick data for the mini chart
@@ -136,60 +184,115 @@ export default function PortfolioPage() {
             {/* My Portfolio Section */}
             {!loading && (
                 <div className="flex flex-col gap-6">
-                    <h2 className="text-2xl font-bold font-serif" style={{ fontFamily: 'Playfair Display, serif' }}>My Assets</h2>
+                    <div className="flex items-center justify-between flex-wrap gap-4">
+                        <h2 className="text-2xl font-bold font-serif" style={{ fontFamily: 'Playfair Display, serif' }}>Portfolio</h2>
+                        <div className="flex rounded-full bg-[#1a2a22] border border-[#2a3d30] p-1">
+                            <button
+                                onClick={() => setActiveTab("assets")}
+                                className={`px-4 py-2 rounded-full text-sm font-bold transition ${activeTab === "assets" ? "bg-[#4ade9a] text-black" : "text-[#a8a8a0] hover:text-white"}`}
+                            >
+                                My Assets
+                            </button>
+                            <button
+                                onClick={() => setActiveTab("history")}
+                                className={`px-4 py-2 rounded-full text-sm font-bold transition ${activeTab === "history" ? "bg-[#4ade9a] text-black" : "text-[#a8a8a0] hover:text-white"}`}
+                            >
+                                Transaction History
+                            </button>
+                        </div>
+                    </div>
                     <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-6 md:p-10 shadow-xl overflow-hidden">
                         <section className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-[#2a3d30]/50 pb-8 mb-8 gap-4">
                             <div>
                                 <span className="text-[#a8a8a0] text-sm uppercase tracking-wider font-bold">Total Portfolio Value</span>
                                 <div className="text-4xl md:text-5xl font-bold mt-2">
-                                    ${(cashBalance + portfolio.reduce((acc, item) => acc + (item.shares * (livePrices[item.ticker] || item.priceAtPurchase)), 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    ${(cashBalance + mergedPositions.reduce((acc, p) => acc + (p.shares * (livePrices[p.ticker] ?? p.avgCost)), 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </div>
                             </div>
                             <div className="text-left md:text-right bg-[#1a2a22] px-6 py-4 rounded-2xl border border-[#2a3d30]">
-                                <span className="text-[#a8a8a0] text-xs uppercase tracking-wider font-bold">Cash Balance</span>
+                                <span className="text-[#a8a8a0] text-xs uppercase tracking-wider font-bold">Available Cash</span>
                                 <div className="text-2xl font-bold mt-1 text-[#4ade9a]">
                                     ${cashBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </div>
                             </div>
                         </section>
 
-                        {portfolio.length === 0 ? (
-                            <div className="py-12 text-center text-[#a8a8a0] flex flex-col items-center">
-                                <div className="w-16 h-16 bg-[#1a2a22] rounded-full flex items-center justify-center mb-4 border border-[#2a3d30]">
-                                    <span className="text-2xl opacity-50">💸</span>
+                        {activeTab === "assets" ? (
+                            mergedPositions.length === 0 ? (
+                                <div className="py-12 text-center text-[#a8a8a0] flex flex-col items-center">
+                                    <div className="w-16 h-16 bg-[#1a2a22] rounded-full flex items-center justify-center mb-4 border border-[#2a3d30]">
+                                        <span className="text-2xl opacity-50">💸</span>
+                                    </div>
+                                    <p className="text-lg">You haven't made any investments yet.</p>
+                                    <p className="text-sm mt-2 max-w-sm">Head over to the Markets tab to start trading and build your portfolio!</p>
                                 </div>
-                                <p className="text-lg">You haven't made any investments yet.</p>
-                                <p className="text-sm mt-2 max-w-sm">Head over to the Markets tab to start trading and build your portfolio!</p>
-                            </div>
-                        ) : (
-                            <div className="flex flex-col gap-4">
-                                {portfolio.map((item, i) => {
-                                    const currentPrice = livePrices[item.ticker] || item.priceAtPurchase;
-                                    const currentValue = item.shares * currentPrice;
-                                    const profit = currentValue - item.costBasis;
-                                    const profitPercent = (profit / item.costBasis) * 100;
-                                    const isPositive = profit >= 0;
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead>
+                                            <tr className="border-b border-[#2a3d30]/50 text-[#a8a8a0] text-sm uppercase tracking-wider">
+                                                <th className="pb-4 font-bold">Ticker</th>
+                                                <th className="pb-4 font-bold text-right">Shares</th>
+                                                <th className="pb-4 font-bold text-right">Avg Cost</th>
+                                                <th className="pb-4 font-bold text-right">Current Price</th>
+                                                <th className="pb-4 font-bold text-right">Market Value</th>
+                                                <th className="pb-4 font-bold text-right">Unrealized P&L</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {mergedPositions.map((item, i) => {
+                                                const currentPrice = livePrices[item.ticker] ?? item.avgCost;
+                                                const marketValue = item.shares * currentPrice;
+                                                const unrealizedPnL = marketValue - item.costBasis;
+                                                const unrealizedPercent = item.costBasis > 0 ? (unrealizedPnL / item.costBasis) * 100 : 0;
+                                                const isPositive = unrealizedPnL >= 0;
 
-                                    return (
-                                        <div key={i} onClick={() => setSelectedAsset(item)} className="flex justify-between items-center p-5 md:p-6 bg-[#1a2a22] rounded-2xl border border-[#2a3d30]/50 hover:border-[#4ade9a]/50 transition-colors group cursor-pointer">
-                                            <div className="flex flex-col gap-1">
-                                                <div className="font-bold text-xl flex items-baseline gap-3">
-                                                    {item.ticker}
-                                                    <span className="text-sm font-medium text-[#a8a8a0] bg-black/20 px-2 py-0.5 rounded">{item.shares} Shares</span>
-                                                </div>
-                                                <div className="text-sm text-[#a8a8a0]">{item.name}</div>
+                                                return (
+                                                    <tr
+                                                        key={i}
+                                                        onClick={() => setSelectedAsset(item)}
+                                                        className="border-b border-[#2a3d30]/30 hover:bg-[#1a2a22]/50 cursor-pointer transition-colors"
+                                                    >
+                                                        <td className="py-4">
+                                                            <div className="font-bold">{item.ticker}</div>
+                                                            <div className="text-sm text-[#a8a8a0]">{item.name}</div>
+                                                        </td>
+                                                        <td className="py-4 text-right font-medium">{item.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
+                                                        <td className="py-4 text-right font-medium">${item.avgCost.toFixed(2)}</td>
+                                                        <td className="py-4 text-right font-medium">${currentPrice.toFixed(2)}</td>
+                                                        <td className="py-4 text-right font-bold">${marketValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                                        <td className={`py-4 text-right font-bold ${isPositive ? "text-[#4ade9a]" : "text-red-400"}`}>
+                                                            {isPositive ? "+" : ""}{unrealizedPnL.toFixed(2)} ({isPositive ? "+" : ""}{unrealizedPercent.toFixed(2)}%)
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )
+                        ) : (
+                            <div className="flex flex-col gap-3">
+                                {transactionsWithPrices.length === 0 ? (
+                                    <div className="py-12 text-center text-[#a8a8a0]">No transactions yet.</div>
+                                ) : (
+                                    [...transactionsWithPrices].reverse().map((tx, i) => (
+                                        <div key={i} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-4 bg-[#1a2a22] rounded-2xl border border-[#2a3d30]/50">
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="font-bold">{tx.ticker}</span>
+                                                <span className="text-sm text-[#a8a8a0]">{tx.name}</span>
                                             </div>
-                                            <div className="text-right flex flex-col gap-1">
-                                                <div className="font-bold text-xl">${currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                                                <div className={`text-sm font-bold flex items-center justify-end gap-1 ${isPositive ? 'text-[#4ade9a]' : 'text-red-400'}`}>
-                                                    <span className="bg-current/10 px-1.5 py-0.5 rounded">
-                                                        {isPositive ? '+' : ''}{profitPercent.toFixed(2)}%
-                                                    </span>
-                                                </div>
+                                            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+                                                <span className={`text-sm font-bold px-2 py-0.5 rounded ${tx.type === "buy" ? "bg-[#4ade9a]/20 text-[#4ade9a]" : "bg-red-500/20 text-red-400"}`}>
+                                                    {tx.type.toUpperCase()}
+                                                </span>
+                                                <span className="text-sm text-[#a8a8a0]">{tx.shares} @ ${(tx.price ?? 0).toFixed(2)}</span>
+                                                <span className="font-bold">${(tx.total ?? 0).toFixed(2)}</span>
+                                                <span className="text-sm text-[#a8a8a0]">{new Date(tx.timestamp).toLocaleDateString()}</span>
                                             </div>
                                         </div>
-                                    );
-                                })}
+                                    ))
+                                )}
                             </div>
                         )}
                     </div>
@@ -381,15 +484,15 @@ export default function PortfolioPage() {
                             </div>
                             <div className="flex justify-between items-center bg-[#1a2a22] p-4 rounded-xl border border-[#2a3d30]">
                                 <span className="text-[#a8a8a0] text-sm font-medium">Avg Cost</span>
-                                <span className="font-bold text-lg text-white">${selectedAsset.priceAtPurchase.toFixed(2)}</span>
+                                <span className="font-bold text-lg text-white">${selectedAsset.avgCost.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between items-center bg-[#1a2a22] p-4 rounded-xl border border-[#2a3d30]">
-                                <span className="text-[#a8a8a0] text-sm font-medium">Total Cost</span>
+                                <span className="text-[#a8a8a0] text-sm font-medium">Cost Basis</span>
                                 <span className="font-bold text-lg text-white">${selectedAsset.costBasis.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between items-center bg-[#1a2a22] p-4 rounded-xl border border-[#2a3d30]">
-                                <span className="text-[#a8a8a0] text-sm font-medium">Purchased On</span>
-                                <span className="font-bold text-md text-white">{new Date(selectedAsset.timestamp).toLocaleDateString()}</span>
+                                <span className="text-[#a8a8a0] text-sm font-medium">Current Price</span>
+                                <span className="font-bold text-lg text-white">${(livePrices[selectedAsset.ticker] ?? selectedAsset.avgCost).toFixed(2)}</span>
                             </div>
                         </div>
                     </div>
