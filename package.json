@@ -9,7 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "firebase": "^12.9.0",
+    "firebase-admin": "^13.6.1",
     "framer-motion": "^12.34.3",
     "next": "16.1.6",
     "react": "19.2.3",
@@ -20,9 +22,12 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-fetch": "^4.1.0",
+    "dotenv": "^17.3.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   }
 }

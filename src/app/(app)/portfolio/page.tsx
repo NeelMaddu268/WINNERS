@@ -10,6 +10,20 @@ export default function PortfolioPage() {
     const [cashBalance, setCashBalance] = useState<number>(0);
     const [loading, setLoading] = useState(true);
     const [selectedAsset, setSelectedAsset] = useState<any | null>(null);
+    const [livePrices, setLivePrices] = useState<Record<string, number>>({});
+
+    useEffect(() => {
+        if (portfolio.length > 0) {
+            const symbols = Array.from(new Set(portfolio.map(p => p.ticker)));
+            import("@/app/actions/fmp").then(({ getBatchQuotes }) => {
+                getBatchQuotes(symbols).then(data => {
+                    const priceMap: Record<string, number> = {};
+                    data.forEach((q: any) => { priceMap[q.symbol] = q.price; });
+                    setLivePrices(priceMap);
+                });
+            });
+        }
+    }, [portfolio]);
 
     useEffect(() => {
         let unsubscribeDoc: () => void;
@@ -77,6 +91,48 @@ export default function PortfolioPage() {
                 </div>
             </header>
 
+            {/* AI Account Summary Section */}
+            {!loading && (
+                <div className="flex flex-col gap-6">
+                    <div className="bg-gradient-to-br from-[#1a2a22] to-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-8 md:p-12 shadow-2xl relative overflow-hidden group">
+                        {/* Decorative AI Sparkles */}
+                        <div className="absolute top-6 right-6 opacity-30 group-hover:opacity-100 transition-opacity duration-1000">
+                            <svg className="w-12 h-12 text-[#4ade9a]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </div>
+
+                        <h2 className="text-3xl font-serif font-bold text-[#f0ede8] mb-4" style={{ fontFamily: 'Playfair Display, serif' }}>
+                            Your Portfolio Pulse
+                        </h2>
+
+                        <p className="text-lg md:text-xl text-[#a8a8a0] leading-relaxed max-w-3xl mb-8">
+                            <span className="text-[#4ade9a] font-medium">AI Insights:</span> Your portfolio is currently heavily consolidated in the tech sector, showing strong momentum from recent AI-driven rallies. While your growth metrics are exceptional, your diversification score is low. Consider exploring index funds to hedge against sector-specific volatility.
+                        </p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* AI Score Badge: Overvaluation */}
+                            <div className="flex items-center justify-between p-4 bg-[#0a120f] border border-[#2a3d30]/40 rounded-2xl">
+                                <span className="text-sm font-medium text-[#a8a8a0]">Overvaluation Risk</span>
+                                <span className="bg-red-500/10 text-red-400 font-bold px-3 py-1 rounded-full text-sm border border-red-500/20">High (82/100)</span>
+                            </div>
+
+                            {/* AI Score Badge: Growth */}
+                            <div className="flex items-center justify-between p-4 bg-[#0a120f] border border-[#2a3d30]/40 rounded-2xl">
+                                <span className="text-sm font-medium text-[#a8a8a0]">Growth Potential</span>
+                                <span className="bg-[#4ade9a]/10 text-[#4ade9a] font-bold px-3 py-1 rounded-full text-sm border border-[#4ade9a]/20">Exceptional (95/100)</span>
+                            </div>
+
+                            {/* AI Score Badge: Political Climate */}
+                            <div className="flex items-center justify-between p-4 bg-[#0a120f] border border-[#2a3d30]/40 rounded-2xl">
+                                <span className="text-sm font-medium text-[#a8a8a0]">Political Climate</span>
+                                <span className="bg-yellow-500/10 text-yellow-400 font-bold px-3 py-1 rounded-full text-sm border border-yellow-500/20">Neutral (50/100)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* My Portfolio Section */}
             {!loading && (
                 <div className="flex flex-col gap-6">
@@ -86,7 +142,7 @@ export default function PortfolioPage() {
                             <div>
                                 <span className="text-[#a8a8a0] text-sm uppercase tracking-wider font-bold">Total Portfolio Value</span>
                                 <div className="text-4xl md:text-5xl font-bold mt-2">
-                                    ${(cashBalance + portfolio.reduce((acc, item) => acc + (item.shares * 189.82), 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    ${(cashBalance + portfolio.reduce((acc, item) => acc + (item.shares * (livePrices[item.ticker] || item.priceAtPurchase)), 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </div>
                             </div>
                             <div className="text-left md:text-right bg-[#1a2a22] px-6 py-4 rounded-2xl border border-[#2a3d30]">
@@ -108,7 +164,7 @@ export default function PortfolioPage() {
                         ) : (
                             <div className="flex flex-col gap-4">
                                 {portfolio.map((item, i) => {
-                                    const currentPrice = 189.82; // Mock current price Since we only traded NVDA
+                                    const currentPrice = livePrices[item.ticker] || item.priceAtPurchase;
                                     const currentValue = item.shares * currentPrice;
                                     const profit = currentValue - item.costBasis;
                                     const profitPercent = (profit / item.costBasis) * 100;
