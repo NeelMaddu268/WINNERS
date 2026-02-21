@@ -12,7 +12,7 @@ type PortfolioPosition = { ticker: string; name: string; shares: number; avgCost
 
 export default function PortfolioPage() {
     const router = useRouter();
-    const [candleData, setCandleData] = useState<any[]>([]);
+    const [candleData, setCandleData] = useState<{ high: number; low: number; open: number; close: number }[]>([]);
     const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
     const [portfolio, setPortfolio] = useState<PortfolioPosition[]>([]);
     const [cashBalance, setCashBalance] = useState<number>(10000);
@@ -65,9 +65,9 @@ export default function PortfolioPage() {
         }
         const symbols = mergedPositions.map(p => p.ticker);
         import("@/app/actions/market").then(({ getBatchQuotes }) => {
-            getBatchQuotes(symbols, forceRefresh).then((data: any[]) => {
+            getBatchQuotes(symbols, forceRefresh).then((data: { symbol: string; price: number; change: number; changesPercentage: number }[]) => {
                 const priceMap: Record<string, number> = {};
-                data.forEach((q: any) => { priceMap[q.symbol] = q.price; });
+                data.forEach((q) => { priceMap[q.symbol] = q.price; });
                 setLivePrices(priceMap);
             });
         });
@@ -272,7 +272,7 @@ export default function PortfolioPage() {
                                     <div className="w-16 h-16 bg-[#1a2a22] rounded-full flex items-center justify-center mb-4 border border-[#2a3d30]">
                                         <span className="text-2xl opacity-50">💸</span>
                                     </div>
-                                    <p className="text-lg">You haven't made any investments yet.</p>
+                                    <p className="text-lg">You haven&apos;t made any investments yet.</p>
                                     <p className="text-sm mt-2 max-w-sm">Head over to the Markets tab to start trading and build your portfolio!</p>
                                 </div>
                             ) : (

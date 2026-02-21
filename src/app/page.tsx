@@ -96,7 +96,18 @@ export default function Home() {
         }, 2200);
         return () => clearInterval(interval);
     }, []);
-    const [particles, setParticles] = useState<any[]>([]);
+    const [particles, setParticles] = useState(() =>
+        floatingSymbols.map((symbol, i) => ({
+            symbol,
+            top: `${Math.random() * 90 + 2}%`,
+            left: `${Math.random() * 90 + 2}%`,
+            size: Math.random() * 0.5 + 0.6,
+            opacity: Math.random() * 0.15 + 0.05,
+            duration: Math.random() * 20 + 15,
+            delay: Math.random() * 10,
+            fadeDelay: i * 0.08,
+        }))
+    );
     const [tickerItems, setTickerItems] = useState(defaultTickerItems);
     const glowRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -122,23 +133,9 @@ export default function Home() {
 
 
 
-    useEffect(() => {
-        setParticles(
-            floatingSymbols.map((symbol, i) => ({
-                symbol,
-                top: `${Math.random() * 90 + 2}%`,
-                left: `${Math.random() * 90 + 2}%`,
-                size: Math.random() * 0.5 + 0.6,
-                opacity: Math.random() * 0.15 + 0.05,
-                duration: Math.random() * 20 + 15,
-                delay: Math.random() * 10,
-                fadeDelay: i * 0.08,
-            }))
-        );
-    }, []);
 
     useEffect(() => {
-        getTickerData().then((data) => setTickerItems(data)).catch(() => {});
+        getTickerData().then((data) => setTickerItems(data)).catch(() => { });
     }, []);
 
     // Particle star field
@@ -216,7 +213,7 @@ export default function Home() {
                                 fontSize: `${p.size}rem`,
                                 opacity: 0,
                                 color: p.symbol.startsWith('+') || p.symbol === '▲' ? '#4ade9a' :
-                                       p.symbol.startsWith('-') || p.symbol === '▼' ? '#f87171' : '#f0ede8',
+                                    p.symbol.startsWith('-') || p.symbol === '▼' ? '#f87171' : '#f0ede8',
                                 animation: `floatSymbol ${p.duration}s ease-in-out ${p.delay}s infinite, symbolFadeIn 1.5s ease ${p.fadeDelay}s forwards`,
                             }}
                         >
@@ -366,7 +363,7 @@ export default function Home() {
                                 <line x1="60" y1="300" x2="200" y2="200" stroke="#4ade9a" strokeOpacity="0.08" strokeWidth="1" />
                                 <line x1="180" y1="360" x2="200" y2="200" stroke="#4ade9a" strokeOpacity="0.08" strokeWidth="1" />
                                 {/* Glowing nodes */}
-                                {[[200,200],[80,80],[200,50],[320,100],[350,220],[300,330],[180,360],[60,300]].map(([cx,cy], i) => (
+                                {[[200, 200], [80, 80], [200, 50], [320, 100], [350, 220], [300, 330], [180, 360], [60, 300]].map(([cx, cy], i) => (
                                     <g key={i}>
                                         <circle cx={cx} cy={cy} r="6" fill="#4ade9a" fillOpacity="0.08" className="animate-pulse" />
                                         <circle cx={cx} cy={cy} r="3" fill="#4ade9a" fillOpacity={i === 0 ? 0.6 : 0.25} className="animate-pulse" style={{ animationDelay: `${i * 0.3}s` }} />
@@ -397,7 +394,7 @@ export default function Home() {
                                     CashMere gives you access to the same tools and capital that hedge funds and institutional traders use — without the barriers. Whether you trade stocks, crypto, or options, our platform levels the playing field.
                                 </p>
                                 <p>
-                                    With AI-driven insights, real-time analytics, and zero-commission trading, you can make smarter decisions faster. Our technology processes millions of data points so you don't have to.
+                                    With AI-driven insights, real-time analytics, and zero-commission trading, you can make smarter decisions faster. Our technology processes millions of data points so you don&apos;t have to.
                                 </p>
                                 <p>
                                     Join a global community of investors who trust CashMere to grow their wealth with confidence, transparency, and cutting-edge infrastructure.
@@ -797,11 +794,10 @@ export default function Home() {
                                 ].map((step, i) => (
                                     <div key={i} className="flex flex-col items-center cursor-pointer group" onClick={() => setActiveStep(i)}>
                                         {/* Step dot */}
-                                        <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-xs font-bold mb-4 transition-all duration-300 ${
-                                            i <= activeStep
-                                                ? 'bg-[#4ade9a] border-[#4ade9a] text-[#0d1a14]'
-                                                : 'bg-transparent border-[#2a3d30] text-[#a8a8a0] group-hover:border-[#4ade9a]/50'
-                                        }`}>
+                                        <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-xs font-bold mb-4 transition-all duration-300 ${i <= activeStep
+                                            ? 'bg-[#4ade9a] border-[#4ade9a] text-[#0d1a14]'
+                                            : 'bg-transparent border-[#2a3d30] text-[#a8a8a0] group-hover:border-[#4ade9a]/50'
+                                            }`}>
                                             {i + 1}
                                         </div>
                                         <span className={`text-xs uppercase tracking-widest mb-2 transition-colors duration-300 ${i === activeStep ? 'text-[#4ade9a]' : 'text-[#a8a8a0]'}`}>{step.label}</span>

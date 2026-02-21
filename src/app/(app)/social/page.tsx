@@ -5,24 +5,59 @@ import { auth, db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, arrayUnion, arrayRemove, addDoc, getDocs, getDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
+import { User } from "firebase/auth";
+
+interface Activity {
+    id: string;
+    user: {
+        uid: string;
+        name: string;
+        handle: string;
+        avatar: string;
+        color: string;
+    };
+    action: string;
+    ticker: string;
+    timestamp: string;
+    likes: string[];
+    commentsList: Comment[];
+    isPositive: boolean;
+    audience?: "public" | "friends";
+}
+
+interface Comment {
+    id: string;
+    uid: string;
+    user: string;
+    text: string;
+    timestamp: string;
+}
 
 export default function SocialPage() {
     const router = useRouter();
     const [isFriendsMenuOpen, setIsFriendsMenuOpen] = useState(false);
     const [selectedFriend, setSelectedFriend] = useState<any | null>(null);
     const [selectedUserDoc, setSelectedUserDoc] = useState<any | null>(null);
-    const [selectedUserHoldings, setSelectedUserHoldings] = useState<any[]>([]);
+    const [selectedUserHoldings, setSelectedUserHoldings] = useState<string[]>([]);
     const [isFriend, setIsFriend] = useState(false);
     const [isPublic, setIsPublic] = useState(false);
 
-    const [activities, setActivities] = useState<any[]>([]);
-    const [currentUser, setCurrentUser] = useState<any>(null);
+    const [activities, setActivities] = useState<Activity[]>([]);
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [myFriends, setMyFriends] = useState<string[]>([]);
     const [loadingFeed, setLoadingFeed] = useState(true);
     const [activeTab, setActiveTab] = useState<"explore" | "friends">("explore");
 
+    const [now, setNow] = useState<number>(0);
     const [openCommentsId, setOpenCommentsId] = useState<string | null>(null);
     const [newCommentText, setNewCommentText] = useState("");
+
+    // Update 'now' every minute to refresh timeAgo labels
+    useEffect(() => {
+        setNow(Date.now());
+        const timer = setInterval(() => setNow(Date.now()), 60000);
+        return () => clearInterval(timer);
+    }, []);
 
     // Mock Friends List
     const friends = [
@@ -63,7 +98,7 @@ export default function SocialPage() {
                 const data = uDoc.data();
                 setSelectedUserDoc(data);
                 setIsPublic(data.isPublic === true);
-                setIsFriend(currentUser && myFriends.includes(selectedFriend.uid));
+                setIsFriend(!!(currentUser && myFriends.includes(selectedFriend.uid)));
 
                 // Compute holdings for the top 3 display
                 if (data.transactionHistory) {
@@ -135,14 +170,14 @@ export default function SocialPage() {
         });
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Activity));
             setActivities(fetched);
             setLoadingFeed(false);
         });
         return () => unsubscribe();
     }, []);
 
-    const toggleLike = async (activity: any) => {
+    const toggleLike = async (activity: Activity) => {
         if (!currentUser) return;
         const ref = doc(db, "global_feed", activity.id);
         const liked = activity.likes?.includes(currentUser.uid);
@@ -161,7 +196,7 @@ export default function SocialPage() {
     const handleAddComment = async (activityId: string) => {
         if (!newCommentText.trim() || !currentUser) return;
         const ref = doc(db, "global_feed", activityId);
-        const username = currentUser.displayName || currentUser.username || "Anonymous";
+        const username = currentUser.displayName || "Anonymous";
 
         const newComment = {
             id: Date.now().toString(),
@@ -181,7 +216,7 @@ export default function SocialPage() {
 
     const timeAgo = (dateStr: string) => {
         if (!dateStr) return "";
-        const diff = Date.now() - new Date(dateStr).getTime();
+        const diff = now - new Date(dateStr).getTime();
         const m = Math.floor(diff / 60000);
         if (m < 60) return `${Math.max(m, 1)}m ago`;
         const h = Math.floor(m / 60);
@@ -222,13 +257,13 @@ export default function SocialPage() {
             ) : (
                 <div className="flex flex-col gap-6">
                     {activities.filter(a => {
-                        const isMyPost = currentUser && a.user.uid === currentUser.uid;
-                        const isFriendPost = currentUser && myFriends.includes(a.user.uid);
+                        const isMyPost = !!(currentUser && a.user.uid === currentUser.uid);
+                        const isFriendPost = !!(currentUser && myFriends.includes(a.user.uid));
 
                         // First apply audience rules
                         let canView = false;
                         if (!a.audience || a.audience === "public") canView = true;
-                        if (a.audience === "friends") canView = (isMyPost || isFriendPost);
+                        if (a.audience === "friends") canView = !!(isMyPost || isFriendPost);
 
                         if (!canView) return false;
 
@@ -297,7 +332,7 @@ export default function SocialPage() {
                                             {commentsList.length === 0 ? (
                                                 <p className="text-sm text-[#a8a8a0] italic">No comments yet. Be the first!</p>
                                             ) : (
-                                                commentsList.map((comment: any) => (
+                                                commentsList.map((comment: Comment) => (
                                                     <div key={comment.id} className="flex gap-3 items-start">
                                                         <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center font-bold text-white text-xs shrink-0">
                                                             {comment.uid === currentUser?.uid ? "ME" : comment.user.slice(0, 2).toUpperCase()}
@@ -411,10 +446,10 @@ export default function SocialPage() {
 
                             {/* Correct margin to clear the absolute positioned avatar properly (pt-20 gives ~5rem clearance) */}
                             <div className="pt-20">
-                                <h3 className="text-3xl font-serif font-bold text-white tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>{selectedUserDoc?.displayName || selectedUserDoc?.username || selectedFriend.name}</h3>
+                                <h3 className="text-3xl font-serif font-bold text-white tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>{selectedUserDoc?.displayName || selectedFriend.name}</h3>
                                 <div className="flex items-center gap-3 mt-1">
                                     <p className="text-[#00c805] font-semibold tracking-wide flex items-center gap-1.5">
-                                        {selectedUserDoc?.handle || (selectedUserDoc?.username ? `@${selectedUserDoc.username}` : selectedFriend.handle)}
+                                        {selectedUserDoc?.handle || selectedFriend.handle}
                                         {selectedFriend.status === "Online" && <span className="w-2 h-2 rounded-full bg-[#00c805] shadow-[0_0_10px_#00c805] animate-pulse relative inline-block"></span>}
                                     </p>
                                     {isFriend && <span className="text-xs bg-[#00c805]/20 text-[#00c805] px-2 py-0.5 rounded-full font-bold">Friend</span>}

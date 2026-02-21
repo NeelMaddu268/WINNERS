@@ -9,7 +9,15 @@ const MOCK_INDEX = {
     symbol: "^GSPC"
 };
 
-const MOCK_TICKERS: Record<string, any> = {
+interface MarketData {
+    price: number;
+    change: number;
+    changesPercentage: number;
+    name: string;
+    symbol: string;
+}
+
+const MOCK_TICKERS: Record<string, Partial<MarketData>> = {
     "NVDA": { price: 189.82, change: 1.91, changesPercentage: 1.02 },
     "AAPL": { price: 173.50, change: -0.45, changesPercentage: -0.26 },
     "MSFT": { price: 410.22, change: 3.14, changesPercentage: 0.77 },
@@ -21,7 +29,7 @@ const MOCK_TICKERS: Record<string, any> = {
 const cache: Record<string, { data: any, expires: number }> = {};
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes before hitting the API again
 
-export async function getMarketIndex(symbol: string = "^GSPC") {
+export async function getMarketIndex(symbol: string = "^GSPC"): Promise<MarketData> {
     try {
         const cacheKey = `index_${symbol}`;
         if (cache[cacheKey] && cache[cacheKey].expires > Date.now()) {
@@ -315,7 +323,7 @@ export async function getEconomicCalendar(): Promise<{ time: string; event: stri
     ];
 }
 
-export async function getBatchQuotes(symbols: string[], skipCache?: boolean) {
+export async function getBatchQuotes(symbols: string[], skipCache?: boolean): Promise<MarketData[]> {
     try {
         const symbolString = symbols.sort().join(",");
         const cacheKey = `batch_${symbolString}`;
@@ -348,7 +356,7 @@ export async function getBatchQuotes(symbols: string[], skipCache?: boolean) {
         });
 
         const rawData = await Promise.all(fetchPromises);
-        const finalData = rawData.filter(Boolean);
+        const finalData = rawData.filter((x): x is MarketData => x !== null);
 
         cache[cacheKey] = { data: finalData, expires: Date.now() + CACHE_TTL_MS };
         return finalData;
@@ -356,7 +364,10 @@ export async function getBatchQuotes(symbols: string[], skipCache?: boolean) {
         console.error("Failed to fetch batch quotes from Yahoo:", error);
         return symbols.map(sym => ({
             symbol: sym,
-            ...(MOCK_TICKERS[sym] || { price: 100, change: 0, changesPercentage: 0 })
+            price: MOCK_TICKERS[sym]?.price ?? 100,
+            change: MOCK_TICKERS[sym]?.change ?? 0,
+            changesPercentage: MOCK_TICKERS[sym]?.changesPercentage ?? 0,
+            name: sym
         }));
     }
 }

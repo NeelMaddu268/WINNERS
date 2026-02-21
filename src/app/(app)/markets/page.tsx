@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { searchTickers, getMarketIndex, getTopGainersLosers, getVolumeLeaders, getSectorPerformance, getEarningsCalendar, getEconomicCalendar, getBatchQuotes } from "@/app/actions/market";
+import { Logos3 } from "@/components/ui/logos3";
 
 // ─── Types ────────────────────────────────────────────────────
 type IndexCard = { label: string; symbol: string; price: number; change: number; pct: number; path: string };
@@ -199,10 +200,17 @@ export default function MarketsPage() {
 
     // Search with debounce
     useEffect(() => {
-        if (searchQuery.trim().length < 2) { setSearchResults([]); setIsSearching(false); return; }
-        setIsSearching(true);
         const t = setTimeout(() => {
-            searchTickers(searchQuery).then(r => { setSearchResults(r); setIsSearching(false); });
+            if (searchQuery.trim().length < 2) {
+                setSearchResults([]);
+                setIsSearching(false);
+            } else {
+                setIsSearching(true);
+                searchTickers(searchQuery).then(r => {
+                    setSearchResults(r);
+                    setIsSearching(false);
+                });
+            }
         }, 300);
         return () => clearTimeout(t);
     }, [searchQuery]);
@@ -239,6 +247,43 @@ export default function MarketsPage() {
                 </div>
             </div>
 
+            {/* ── Fear & Greed ── */}
+            <div className="px-4 mt-4">
+                <div className="bg-[#111] border border-zinc-800 rounded-2xl p-4">
+                    <div className="flex justify-between items-center mb-3">
+                        <span className="text-xs font-bold tracking-widest text-zinc-500 uppercase">Fear &amp; Greed Index</span>
+                        <span className="text-xs font-bold" style={{ color: fearGreedColor }}>{fearGreedLabel}</span>
+                    </div>
+                    <div className="relative w-full h-3 rounded-full bg-gradient-to-r from-red-600 via-amber-400 to-[#00c805]">
+                        <div
+                            className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow-lg shadow-black/50 transition-all duration-700"
+                            style={{ left: `calc(${fearGreed}% - 8px)`, backgroundColor: fearGreedColor }}
+                        />
+                    </div>
+                    <div className="flex justify-between mt-1.5">
+                        <span className="text-[10px] text-red-500 font-semibold">Extreme Fear</span>
+                        <span className="text-[10px] font-bold text-2xl" style={{ color: fearGreedColor }}>{fearGreed}</span>
+                        <span className="text-[10px] text-[#00c805] font-semibold">Extreme Greed</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* ── S&P 500 Companies Carousel ── */}
+            <Logos3
+                heading="S&P 500 Market Leaders"
+                logos={[
+                    { id: "microsoft", description: "Microsoft", image: "https://www.vectorlogo.zone/logos/microsoft/microsoft-ar21.svg", className: "h-8 w-auto" },
+                    { id: "apple", description: "Apple", image: "https://www.vectorlogo.zone/logos/apple/apple-ar21.svg", className: "h-8 w-auto" },
+                    { id: "google", description: "Google", image: "https://www.vectorlogo.zone/logos/google/google-ar21.svg", className: "h-8 w-auto" },
+                    { id: "nvidia", description: "NVIDIA", image: "https://www.vectorlogo.zone/logos/nvidia/nvidia-ar21.svg", className: "h-8 w-auto" },
+                    { id: "visa", description: "Visa", image: "https://cdn.worldvectorlogo.com/logos/visa-10.svg", className: "h-6 w-auto" },
+                    { id: "jpmorgan", description: "JPMorgan Chase", image: "https://cdn.worldvectorlogo.com/logos/jpmorgan-chase.svg", className: "h-7 w-auto" },
+                    { id: "amazon", description: "Amazon", image: "https://www.vectorlogo.zone/logos/amazon/amazon-ar21.svg", className: "h-8 w-auto" },
+                    { id: "meta", description: "Meta", image: "https://www.vectorlogo.zone/logos/facebook/facebook-ar21.svg", className: "h-8 w-auto" },
+                    { id: "tesla", description: "Tesla", image: "https://www.vectorlogo.zone/logos/tesla/tesla-ar21.svg", className: "h-8 w-auto" },
+                ]}
+            />
+
             {/* ── Market Breadth ── */}
             <div className="px-4 mt-4">
                 <div className="bg-[#111] border border-zinc-800 rounded-2xl p-4">
@@ -260,27 +305,6 @@ export default function MarketsPage() {
                     <div className="flex justify-between mt-1">
                         <span className="text-[10px] text-zinc-600">{((breadth.up / breadthTotal) * 100).toFixed(0)}% advancing</span>
                         <span className="text-[10px] text-zinc-600">{((breadth.down / breadthTotal) * 100).toFixed(0)}% declining</span>
-                    </div>
-                </div>
-            </div>
-
-            {/* ── Fear & Greed ── */}
-            <div className="px-4 mt-4">
-                <div className="bg-[#111] border border-zinc-800 rounded-2xl p-4">
-                    <div className="flex justify-between items-center mb-3">
-                        <span className="text-xs font-bold tracking-widest text-zinc-500 uppercase">Fear &amp; Greed Index</span>
-                        <span className="text-xs font-bold" style={{ color: fearGreedColor }}>{fearGreedLabel}</span>
-                    </div>
-                    <div className="relative w-full h-3 rounded-full bg-gradient-to-r from-red-600 via-amber-400 to-[#00c805]">
-                        <div
-                            className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow-lg shadow-black/50 transition-all duration-700"
-                            style={{ left: `calc(${fearGreed}% - 8px)`, backgroundColor: fearGreedColor }}
-                        />
-                    </div>
-                    <div className="flex justify-between mt-1.5">
-                        <span className="text-[10px] text-red-500 font-semibold">Extreme Fear</span>
-                        <span className="text-[10px] font-bold text-2xl" style={{ color: fearGreedColor }}>{fearGreed}</span>
-                        <span className="text-[10px] text-[#00c805] font-semibold">Extreme Greed</span>
                     </div>
                 </div>
             </div>
