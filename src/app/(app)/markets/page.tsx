@@ -264,15 +264,6 @@ export default function MarketsPage() {
 
     return (
         <div className="flex flex-col w-full animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans text-white pb-24 md:pb-8 max-w-2xl mx-auto gap-0">
-
-            {/* ── Data Freshness Badge ── */}
-            <div className="flex items-center justify-end px-4 mt-1 mb-1">
-                <span className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-400/80 bg-amber-400/10 border border-amber-400/20 rounded-full px-2.5 py-0.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                    Data delayed 15 min
-                </span>
-            </div>
-
             {/* ── Big Three Indices ── */}
             <div className="px-4 mt-2">
                 <h2 className="text-xs font-bold tracking-widest text-zinc-500 uppercase mb-3">Market Overview</h2>
