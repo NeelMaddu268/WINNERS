@@ -112,7 +112,7 @@ export default function PhoneAuth() {
                 router.push("/setup");
             } else {
                 // Existing completed user
-                router.push("/home");
+                router.push("/portfolio");
             }
 
         } catch (err: any) {

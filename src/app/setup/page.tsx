@@ -108,7 +108,7 @@ export default function SetupPage() {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (user) {
                 if (user.displayName) {
-                    router.push("/home");
+                    router.push("/portfolio");
                     return;
                 }
                 setUserPhone(user.phoneNumber);
@@ -243,7 +243,7 @@ export default function SetupPage() {
                 transactionHistory: [],
             });
 
-            router.push("/home");
+            router.push("/portfolio");
         } catch (err: any) {
             console.error("Failed to complete setup:", err);
             setSetupError(err.message || "An unexpected error occurred. Please try again.");

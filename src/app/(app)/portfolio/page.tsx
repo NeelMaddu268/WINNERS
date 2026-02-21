@@ -74,35 +74,47 @@ export default function PortfolioPage() {
     useEffect(() => {
         let unsubscribeDoc: () => void;
 
-        const unsubscribeAuth = auth.onAuthStateChanged((user) => {
-            if (user) {
-                const userRef = doc(db, "users", user.uid);
-
-                unsubscribeDoc = onSnapshot(userRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        const data = docSnap.data();
-                        setTransactionHistory(data.transactionHistory || []);
-                    }
-                    setLoading(false);
-                }, (error) => {
-                    console.error("Failed to listen to user data:", error);
-                    setLoading(false);
-                });
-            } else {
-                setTransactionHistory([]);
-                setPortfolio([]);
-                setCashBalance(10000);
-                setTransactionsWithPrices([]);
+        const attachSnapshot = (uid: string) => {
+            const userRef = doc(db, "users", uid);
+            unsubscribeDoc = onSnapshot(userRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    setTransactionHistory(data.transactionHistory || []);
+                } else {
+                    setTransactionHistory([]);
+                }
                 setLoading(false);
-                if (unsubscribeDoc) unsubscribeDoc();
-            }
-        });
+            }, (error) => {
+                console.error("Failed to listen to user data:", error);
+                setLoading(false);
+            });
+        };
+
+        // Use already-resolved currentUser first (layout guarantees auth is done)
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+            attachSnapshot(currentUser.uid);
+        } else {
+            // Fallback: wait for auth state (e.g. on hard refresh)
+            const unsubscribeAuth = auth.onAuthStateChanged((user) => {
+                if (user) {
+                    attachSnapshot(user.uid);
+                } else {
+                    setTransactionHistory([]);
+                    setPortfolio([]);
+                    setCashBalance(10000);
+                    setTransactionsWithPrices([]);
+                    setLoading(false);
+                }
+                unsubscribeAuth(); // only need it once
+            });
+        }
 
         return () => {
-            unsubscribeAuth();
             if (unsubscribeDoc) unsubscribeDoc();
         };
     }, []);
+
 
     // Derive portfolio and cash from transaction history (price based on timestamp)
     useEffect(() => {
@@ -382,27 +394,42 @@ export default function PortfolioPage() {
                     <div className="lg:col-span-5 flex flex-col gap-6">
 
                         {/* Profitable Positions Gauge */}
-                        <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-10 flex flex-col items-center justify-center shadow-xl relative">
-                            <h3 className="text-xl font-medium text-[#a8a8a0] mb-8 text-center font-serif" style={{ fontFamily: 'Playfair Display, serif' }}>
-                                Profitable Positions
-                            </h3>
-
-                            <div className="relative w-48 h-48 flex items-center justify-center">
-                                {/* SVG Gauge */}
-                                <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90 filter drop-shadow-[0_0_15px_rgba(74,222,154,0.3)]">
-                                    {/* Background ring */}
-                                    <circle cx="50" cy="50" r="42" stroke="#1a2a22" strokeWidth="6" fill="none" />
-                                    {/* Value ring (83% of 263.89 circumference = 219.02 dasharray, offset 44.86) */}
-                                    <circle cx="50" cy="50" r="42" stroke="#4ade9a" strokeWidth="6" fill="none" strokeDasharray="263.89" strokeDashoffset="44.86" strokeLinecap="round" className="animate-[spin_1.5s_ease-out_reverse]" />
-                                </svg>
-
-                                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                    <span className="text-6xl font-bold font-serif text-white tracking-tighter" style={{ fontFamily: 'Playfair Display, serif' }}>
-                                        83<span className="text-3xl text-[#4ade9a]">%</span>
-                                    </span>
+                        {(() => {
+                            const profitableCount = mergedPositions.filter(p => (livePrices[p.ticker] ?? p.avgCost) > p.avgCost).length;
+                            const total = mergedPositions.length;
+                            const pct = total > 0 ? Math.round((profitableCount / total) * 100) : 0;
+                            const circumference = 263.89;
+                            const dashOffset = circumference - (pct / 100) * circumference;
+                            return (
+                                <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-10 flex flex-col items-center justify-center shadow-xl relative">
+                                    <h3 className="text-xl font-medium text-[#a8a8a0] mb-8 text-center font-serif" style={{ fontFamily: 'Playfair Display, serif' }}>
+                                        Profitable Positions
+                                    </h3>
+                                    <div className="relative w-48 h-48 flex items-center justify-center">
+                                        <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90 filter drop-shadow-[0_0_15px_rgba(74,222,154,0.3)]">
+                                            <circle cx="50" cy="50" r="42" stroke="#1a2a22" strokeWidth="6" fill="none" />
+                                            <circle
+                                                cx="50" cy="50" r="42"
+                                                stroke={pct >= 50 ? "#4ade9a" : "#f87171"}
+                                                strokeWidth="6" fill="none"
+                                                strokeDasharray={circumference}
+                                                strokeDashoffset={dashOffset}
+                                                strokeLinecap="round"
+                                                style={{ transition: "stroke-dashoffset 1s ease-out" }}
+                                            />
+                                        </svg>
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                            <span className="text-6xl font-bold font-serif text-white tracking-tighter" style={{ fontFamily: 'Playfair Display, serif' }}>
+                                                {total === 0 ? "—" : pct}<span className="text-3xl" style={{ color: pct >= 50 ? "#4ade9a" : "#f87171" }}>{total > 0 ? "%" : ""}</span>
+                                            </span>
+                                            {total > 0 && (
+                                                <span className="text-xs text-[#a8a8a0] mt-1">{profitableCount} of {total} positions</span>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
+                            );
+                        })()}
 
                         {/* Grid for Chart and Beating Market Box */}
                         <div className="grid grid-cols-2 gap-6 h-full">
