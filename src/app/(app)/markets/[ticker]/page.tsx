@@ -532,7 +532,7 @@ export default function TickerPage() {
                 </div>
 
                 {/* Key Statistics */}
-                <div className="mt-8 pb-32">
+                <div className="mt-8">
                     <h2 className="text-xl font-bold mb-4 text-zinc-400">Key Statistics</h2>
                     <div className="grid grid-cols-2 gap-y-4 text-sm bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
                         <div>
@@ -553,6 +553,41 @@ export default function TickerPage() {
                         </div>
                     </div>
                 </div>
+
+                {/* Your Position (when user holds this ticker) */}
+                {chartPosition && chartPosition.shares > 0 && (
+                    <div className="mt-8 pb-32">
+                        <h2 className="text-xl font-bold mb-4 text-zinc-400">Your Position</h2>
+                        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 space-y-4">
+                            <div className="flex justify-between items-center">
+                                <span className="text-zinc-500">Shares</span>
+                                <span className="font-bold text-lg">{chartPosition.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-zinc-500">Avg Cost</span>
+                                <span className="font-bold">${chartPosition.avgCost.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-zinc-500">Cost Basis</span>
+                                <span className="font-bold">${chartPosition.costBasis.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-zinc-500">Market Value</span>
+                                <span className="font-bold">${(chartPosition.shares * price).toFixed(2)}</span>
+                            </div>
+                            <div className="pt-4 border-t border-zinc-800 flex justify-between items-center">
+                                <span className="text-zinc-500">Unrealized P&L</span>
+                                <span className={`font-bold ${(chartPosition.shares * price - chartPosition.costBasis) >= 0 ? "text-[#00c805]" : "text-red-500"}`}>
+                                    {((chartPosition.shares * price - chartPosition.costBasis) >= 0 ? "+" : "")}
+                                    ${(chartPosition.shares * price - chartPosition.costBasis).toFixed(2)}
+                                    {" "}
+                                    ({chartPosition.costBasis > 0 ? ((chartPosition.shares * price - chartPosition.costBasis) / chartPosition.costBasis * 100).toFixed(2) : "0"}%)
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {(!chartPosition || chartPosition.shares <= 0) && <div className="pb-32" />}
             </div>
 
             {/* Trade Modal */}
@@ -593,8 +628,19 @@ export default function TickerPage() {
                                     </button>
                                 </div>
                                 {tradeMode === "sell" && userPosition && (
-                                    <div className="mb-4 p-3 bg-zinc-800/50 rounded-xl text-sm text-zinc-400">
-                                        Shares available: <span className="font-bold text-white">{userPosition.shares}</span>
+                                    <div className="mb-4 flex items-center justify-between gap-3 p-3 bg-zinc-800/50 rounded-xl text-sm text-zinc-400">
+                                        <span>Shares available: <span className="font-bold text-white">{userPosition.shares}</span></span>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setInputMode("shares");
+                                                setSharesInput(userPosition.shares.toString());
+                                                setDollarsInput("");
+                                            }}
+                                            className="text-xs font-bold text-red-400 hover:text-red-300 px-3 py-1 rounded-full border border-red-500/50 hover:border-red-400/50 transition"
+                                        >
+                                            Sell All
+                                        </button>
                                     </div>
                                 )}
                                 <div className="flex justify-between items-center bg-black/50 p-4 rounded-xl mb-4 border border-zinc-800">
@@ -644,7 +690,7 @@ export default function TickerPage() {
                                     )}
                                 </div>
                                 <div className="flex justify-between items-center mb-8 px-2">
-                                    <span className="text-zinc-400 font-medium">{tradeMode === "buy" ? "Estimated Cost" : "Estimated Proceeds"}</span>
+                                    <span className="text-zinc-400 font-medium">{tradeMode === "buy" ? "Estimated Cost" : "Cashout"}</span>
                                     <span className="font-bold text-xl">${dollarsFromInput.toFixed(2)}</span>
                                 </div>
                                 {inputMode === "dollars" && sharesFromInput > 0 && (

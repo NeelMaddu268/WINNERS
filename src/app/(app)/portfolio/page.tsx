@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 import { recalculatePortfolioFromTransactions, type Transaction } from "@/app/actions/portfolio";
@@ -8,13 +9,13 @@ import { recalculatePortfolioFromTransactions, type Transaction } from "@/app/ac
 type PortfolioPosition = { ticker: string; name: string; shares: number; avgCost: number; costBasis: number; priceAtPurchase?: number };
 
 export default function PortfolioPage() {
+    const router = useRouter();
     const [candleData, setCandleData] = useState<any[]>([]);
     const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
     const [portfolio, setPortfolio] = useState<PortfolioPosition[]>([]);
     const [cashBalance, setCashBalance] = useState<number>(10000);
     const [transactionsWithPrices, setTransactionsWithPrices] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
-    const [selectedAsset, setSelectedAsset] = useState<PortfolioPosition | null>(null);
     const [livePrices, setLivePrices] = useState<Record<string, number>>({});
     const [activeTab, setActiveTab] = useState<"assets" | "history">("assets");
 
@@ -43,20 +44,32 @@ export default function PortfolioPage() {
             }));
     }, [portfolio]);
 
-    useEffect(() => {
-        if (mergedPositions.length > 0) {
-            const symbols = mergedPositions.map(p => p.ticker);
-            import("@/app/actions/fmp").then(({ getBatchQuotes }) => {
-                getBatchQuotes(symbols).then((data: any[]) => {
-                    const priceMap: Record<string, number> = {};
-                    data.forEach((q: any) => { priceMap[q.symbol] = q.price; });
-                    setLivePrices(priceMap);
-                });
-            });
-        } else {
+    const fetchLivePrices = useCallback((forceRefresh = false) => {
+        if (mergedPositions.length === 0) {
             setLivePrices({});
+            return;
         }
+        const symbols = mergedPositions.map(p => p.ticker);
+        import("@/app/actions/fmp").then(({ getBatchQuotes }) => {
+            getBatchQuotes(symbols, forceRefresh).then((data: any[]) => {
+                const priceMap: Record<string, number> = {};
+                data.forEach((q: any) => { priceMap[q.symbol] = q.price; });
+                setLivePrices(priceMap);
+            });
+        });
     }, [mergedPositions]);
+
+    useEffect(() => {
+        fetchLivePrices(true);
+        const interval = setInterval(() => fetchLivePrices(true), 10000);
+        return () => clearInterval(interval);
+    }, [fetchLivePrices]);
+
+    useEffect(() => {
+        if (activeTab === "assets" && mergedPositions.length > 0) {
+            fetchLivePrices(true);
+        }
+    }, [activeTab, mergedPositions.length, fetchLivePrices]);
 
     useEffect(() => {
         let unsubscribeDoc: () => void;
@@ -186,16 +199,16 @@ export default function PortfolioPage() {
                 <div className="flex flex-col gap-6">
                     <div className="flex items-center justify-between flex-wrap gap-4">
                         <h2 className="text-2xl font-bold font-serif" style={{ fontFamily: 'Playfair Display, serif' }}>Portfolio</h2>
-                        <div className="flex rounded-full bg-[#1a2a22] border border-[#2a3d30] p-1">
+                        <div className="flex rounded-full bg-[#1a2a22] border border-[#2a3d30] p-1 gap-2">
                             <button
                                 onClick={() => setActiveTab("assets")}
-                                className={`px-4 py-2 rounded-full text-sm font-bold transition ${activeTab === "assets" ? "bg-[#4ade9a] text-black" : "text-[#a8a8a0] hover:text-white"}`}
+                                className={`px-6 py-2 rounded-full text-sm font-bold transition ${activeTab === "assets" ? "bg-[#4ade9a] text-black" : "text-[#a8a8a0] hover:text-white"}`}
                             >
                                 My Assets
                             </button>
                             <button
                                 onClick={() => setActiveTab("history")}
-                                className={`px-4 py-2 rounded-full text-sm font-bold transition ${activeTab === "history" ? "bg-[#4ade9a] text-black" : "text-[#a8a8a0] hover:text-white"}`}
+                                className={`px-6 py-2 rounded-full text-sm font-bold transition ${activeTab === "history" ? "bg-[#4ade9a] text-black" : "text-[#a8a8a0] hover:text-white"}`}
                             >
                                 Transaction History
                             </button>
@@ -228,21 +241,21 @@ export default function PortfolioPage() {
                                 </div>
                             ) : (
                                 <div className="overflow-x-auto">
-                                    <table className="w-full text-left">
+                                    <table className="w-full text-left min-w-[700px]">
                                         <thead>
                                             <tr className="border-b border-[#2a3d30]/50 text-[#a8a8a0] text-sm uppercase tracking-wider">
-                                                <th className="pb-4 font-bold">Ticker</th>
-                                                <th className="pb-4 font-bold text-right">Shares</th>
-                                                <th className="pb-4 font-bold text-right">Avg Cost</th>
-                                                <th className="pb-4 font-bold text-right">Current Price</th>
-                                                <th className="pb-4 font-bold text-right">Market Value</th>
-                                                <th className="pb-4 font-bold text-right">Unrealized P&L</th>
+                                                <th className="pb-4 font-bold pr-8 min-w-[140px]">Ticker</th>
+                                                <th className="pb-4 font-bold text-right pr-8 min-w-[100px]">Shares</th>
+                                                <th className="pb-4 font-bold text-right pr-8 min-w-[100px]">Avg Cost</th>
+                                                <th className="pb-4 font-bold text-right pr-8 min-w-[110px]">Current Price</th>
+                                                <th className="pb-4 font-bold text-right pr-8 min-w-[120px]">Market Value</th>
+                                                <th className="pb-4 font-bold text-right min-w-[140px]">Unrealized P&L</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {mergedPositions.map((item, i) => {
                                                 const currentPrice = livePrices[item.ticker] ?? item.avgCost;
-                                                const marketValue = item.shares * currentPrice;
+                                                const marketValue = currentPrice * item.shares;
                                                 const unrealizedPnL = marketValue - item.costBasis;
                                                 const unrealizedPercent = item.costBasis > 0 ? (unrealizedPnL / item.costBasis) * 100 : 0;
                                                 const isPositive = unrealizedPnL >= 0;
@@ -250,17 +263,17 @@ export default function PortfolioPage() {
                                                 return (
                                                     <tr
                                                         key={i}
-                                                        onClick={() => setSelectedAsset(item)}
+                                                        onClick={() => router.push(`/markets/${item.ticker}`)}
                                                         className="border-b border-[#2a3d30]/30 hover:bg-[#1a2a22]/50 cursor-pointer transition-colors"
                                                     >
-                                                        <td className="py-4">
+                                                        <td className="py-4 pr-8">
                                                             <div className="font-bold">{item.ticker}</div>
                                                             <div className="text-sm text-[#a8a8a0]">{item.name}</div>
                                                         </td>
-                                                        <td className="py-4 text-right font-medium">{item.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
-                                                        <td className="py-4 text-right font-medium">${item.avgCost.toFixed(2)}</td>
-                                                        <td className="py-4 text-right font-medium">${currentPrice.toFixed(2)}</td>
-                                                        <td className="py-4 text-right font-bold">${marketValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                                        <td className="py-4 text-right font-medium pr-8">{item.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
+                                                        <td className="py-4 text-right font-medium pr-8">${item.avgCost.toFixed(2)}</td>
+                                                        <td className="py-4 text-right font-medium pr-8">${currentPrice.toFixed(2)}</td>
+                                                        <td className="py-4 text-right font-bold pr-8">${marketValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                                         <td className={`py-4 text-right font-bold ${isPositive ? "text-[#4ade9a]" : "text-red-400"}`}>
                                                             {isPositive ? "+" : ""}{unrealizedPnL.toFixed(2)} ({isPositive ? "+" : ""}{unrealizedPercent.toFixed(2)}%)
                                                         </td>
@@ -467,37 +480,6 @@ export default function PortfolioPage() {
                     </div>
                 </div>
             </div>
-
-            {/* Asset Details Modal */}
-            {selectedAsset && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                    <div className="bg-[#111c18] border border-[#2a3d30] rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold font-serif" style={{ fontFamily: 'Playfair Display, serif' }}>{selectedAsset.ticker} Details</h3>
-                            <button onClick={() => setSelectedAsset(null)} className="text-[#a8a8a0] hover:text-white bg-[#1a2a22] w-8 h-8 rounded-full flex items-center justify-center transition">✕</button>
-                        </div>
-
-                        <div className="flex flex-col gap-4">
-                            <div className="flex justify-between items-center bg-[#1a2a22] p-4 rounded-xl border border-[#2a3d30]">
-                                <span className="text-[#a8a8a0] text-sm font-medium">Shares Owned</span>
-                                <span className="font-bold text-lg text-white">{selectedAsset.shares}</span>
-                            </div>
-                            <div className="flex justify-between items-center bg-[#1a2a22] p-4 rounded-xl border border-[#2a3d30]">
-                                <span className="text-[#a8a8a0] text-sm font-medium">Avg Cost</span>
-                                <span className="font-bold text-lg text-white">${selectedAsset.avgCost.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between items-center bg-[#1a2a22] p-4 rounded-xl border border-[#2a3d30]">
-                                <span className="text-[#a8a8a0] text-sm font-medium">Cost Basis</span>
-                                <span className="font-bold text-lg text-white">${selectedAsset.costBasis.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between items-center bg-[#1a2a22] p-4 rounded-xl border border-[#2a3d30]">
-                                <span className="text-[#a8a8a0] text-sm font-medium">Current Price</span>
-                                <span className="font-bold text-lg text-white">${(livePrices[selectedAsset.ticker] ?? selectedAsset.avgCost).toFixed(2)}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
 
         </div>
     );
