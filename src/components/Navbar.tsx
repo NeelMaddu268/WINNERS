@@ -15,6 +15,7 @@ export default function Navbar() {
         { href: "/portfolio", label: "Portfolio" },
         { href: "/markets", label: "Markets" },
         { href: "/social", label: "Feed" },
+        { href: "/friends", label: "Friends" },
         { href: "/settings", label: "Settings" } // Added settings so they can log out
     ];
 

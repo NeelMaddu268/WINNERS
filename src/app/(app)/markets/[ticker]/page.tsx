@@ -45,6 +45,7 @@ export default function TickerPage() {
     // Trade Share Tracking
     const [recentTradeShareState, setRecentTradeShareState] = useState<"pending" | "shared" | "auto-shared" | "none">("none");
     const [recentTradeDetails, setRecentTradeDetails] = useState<any>(null);
+    const [selectedAudience, setSelectedAudience] = useState<"public" | "friends">("public");
     const [tradeResultDetails, setTradeResultDetails] = useState<any>(null);
 
     useEffect(() => {
@@ -274,6 +275,7 @@ export default function TickerPage() {
                 return;
             }
             const autoShare = userSnap.data().autoShare || false;
+            const defaultAudience = userSnap.data().defaultAudience || "public";
 
             const transactionHistory = userSnap.data().transactionHistory || [];
             const timestamp = new Date().toISOString();
@@ -335,6 +337,7 @@ export default function TickerPage() {
                         color: "bg-blue-500",
                         uid: auth.currentUser.uid
                     },
+                    audience: defaultAudience,
                     action: actionText,
                     ticker: tickerData.ticker,
                     timestamp: new Date().toISOString(),
@@ -349,6 +352,7 @@ export default function TickerPage() {
                 }, 2000);
             } else {
                 setRecentTradeShareState("pending");
+                setSelectedAudience(defaultAudience);
                 setRecentTradeDetails({
                     tradeMode,
                     shares,
@@ -399,6 +403,7 @@ export default function TickerPage() {
                     color: "bg-blue-500",
                     uid: auth.currentUser.uid
                 },
+                audience: selectedAudience,
                 action: actionText,
                 ticker: recentTradeDetails.ticker,
                 timestamp: new Date().toISOString(),
@@ -419,6 +424,10 @@ export default function TickerPage() {
         if (!auth.currentUser || !tickerData || !chartPosition) return;
         setIsSharingPosition(true);
         try {
+            const userRef = doc(db, "users", auth.currentUser.uid);
+            const userSnap = await getDoc(userRef);
+            const defaultAudience = userSnap.exists() ? (userSnap.data().defaultAudience || "public") : "public";
+
             const feedRef = collection(db, "global_feed");
             const profit = (chartPosition.shares * price - chartPosition.costBasis);
             const isProfit = profit >= 0;
@@ -432,6 +441,7 @@ export default function TickerPage() {
                     color: "bg-blue-500", // Defaulting to blue for real users right now
                     uid: auth.currentUser.uid
                 },
+                audience: defaultAudience,
                 action: actionText,
                 ticker: tickerData.ticker,
                 timestamp: new Date().toISOString(),
@@ -814,6 +824,17 @@ export default function TickerPage() {
 
                                 {recentTradeShareState === "pending" && (
                                     <div className="flex flex-col w-full gap-3 mt-4">
+                                        <div className="flex items-center justify-between px-2 text-sm text-zinc-400">
+                                            <span>Share with:</span>
+                                            <select
+                                                value={selectedAudience}
+                                                onChange={(e) => setSelectedAudience(e.target.value as "public" | "friends")}
+                                                className="bg-zinc-800 text-white border-none rounded-lg px-2 py-1 outline-none cursor-pointer"
+                                            >
+                                                <option value="public">Public</option>
+                                                <option value="friends">Friends Only</option>
+                                            </select>
+                                        </div>
                                         <button
                                             onClick={handleShareRecentTrade}
                                             className="w-full py-3 bg-[#00c805] hover:bg-[#00e306] text-black rounded-xl font-bold transition flex items-center justify-center gap-2"

@@ -12,6 +12,8 @@ export default function SettingsPage() {
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState("");
     const [autoShare, setAutoShare] = useState(false);
+    const [isPublic, setIsPublic] = useState(false);
+    const [defaultAudience, setDefaultAudience] = useState<"public" | "friends">("public");
     const [loadingSettings, setLoadingSettings] = useState(true);
 
     useEffect(() => {
@@ -21,6 +23,8 @@ export default function SettingsPage() {
                 const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
                 if (userDoc.exists()) {
                     setAutoShare(userDoc.data().autoShare || false);
+                    setIsPublic(userDoc.data().isPublic || false);
+                    setDefaultAudience(userDoc.data().defaultAudience || "public");
                 }
             } catch (err) {
                 console.error("Failed to load settings:", err);
@@ -41,6 +45,34 @@ export default function SettingsPage() {
         } catch (err) {
             console.error("Failed to update auto share setting:", err);
             setAutoShare(!newVal); // revert on error
+        }
+    };
+
+    const togglePrivacy = async () => {
+        if (!auth.currentUser) return;
+        const newVal = !isPublic;
+        setIsPublic(newVal);
+        try {
+            await updateDoc(doc(db, "users", auth.currentUser.uid), {
+                isPublic: newVal
+            });
+        } catch (err) {
+            console.error("Failed to update privacy setting:", err);
+            setIsPublic(!newVal); // revert on error
+        }
+    };
+
+    const changeDefaultAudience = async (newVal: "public" | "friends") => {
+        if (!auth.currentUser) return;
+        const oldVal = defaultAudience;
+        setDefaultAudience(newVal);
+        try {
+            await updateDoc(doc(db, "users", auth.currentUser.uid), {
+                defaultAudience: newVal
+            });
+        } catch (err) {
+            console.error("Failed to update audience setting:", err);
+            setDefaultAudience(oldVal); // revert on error
         }
     };
 
@@ -115,6 +147,41 @@ export default function SettingsPage() {
                                     />
                                     <div className="w-11 h-6 bg-zinc-200 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00c805]"></div>
                                 </label>
+                            </div>
+                        </div>
+                        <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-zinc-100 dark:border-zinc-800">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Public Profile</h3>
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Allow anyone to view your portfolio holdings. If disabled, only friends can see them.</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="sr-only peer"
+                                        checked={isPublic}
+                                        onChange={togglePrivacy}
+                                        disabled={loadingSettings}
+                                    />
+                                    <div className="w-11 h-6 bg-zinc-200 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00c805]"></div>
+                                </label>
+                            </div>
+                        </div>
+                        <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-zinc-100 dark:border-zinc-800">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Default Post Audience</h3>
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Choose who can see your trades when you post them to the feed.</p>
+                                </div>
+                                <select
+                                    value={defaultAudience}
+                                    onChange={(e) => changeDefaultAudience(e.target.value as "public" | "friends")}
+                                    disabled={loadingSettings}
+                                    className="bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 text-sm rounded-lg px-3 py-1.5 border-none focus:ring-2 focus:ring-[#00c805] outline-none cursor-pointer"
+                                >
+                                    <option value="public">Public</option>
+                                    <option value="friends">Friends Only</option>
+                                </select>
                             </div>
                         </div>
                     </div>

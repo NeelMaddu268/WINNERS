@@ -11,6 +11,7 @@ export default function SocialPage() {
 
     const [activities, setActivities] = useState<any[]>([]);
     const [currentUser, setCurrentUser] = useState<any>(null);
+    const [myFriends, setMyFriends] = useState<string[]>([]);
     const [loadingFeed, setLoadingFeed] = useState(true);
 
     const [openCommentsId, setOpenCommentsId] = useState<string | null>(null);
@@ -25,10 +26,24 @@ export default function SocialPage() {
     ];
 
     useEffect(() => {
+        let unsubUser: (() => void) | undefined;
         const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
             setCurrentUser(user);
+            if (user) {
+                unsubUser = onSnapshot(doc(db, "users", user.uid), (snap) => {
+                    if (snap.exists()) {
+                        setMyFriends(snap.data().friends || []);
+                    }
+                });
+            } else {
+                setMyFriends([]);
+                if (unsubUser) unsubUser();
+            }
         });
-        return () => unsubscribeAuth();
+        return () => {
+            unsubscribeAuth();
+            if (unsubUser) unsubUser();
+        };
     }, []);
 
     useEffect(() => {
@@ -148,7 +163,13 @@ export default function SocialPage() {
                 </div>
             ) : (
                 <div className="flex flex-col gap-6">
-                    {activities.map((activity) => {
+                    {activities.filter(a => {
+                        if (!a.audience || a.audience === "public") return true;
+                        if (a.audience === "friends") {
+                            return currentUser && (a.user.uid === currentUser.uid || myFriends.includes(a.user.uid));
+                        }
+                        return false;
+                    }).map((activity) => {
                         const likesCount = activity.likes?.length || 0;
                         const likedByMe = currentUser && activity.likes?.includes(currentUser.uid);
                         const commentsList = activity.commentsList || [];
