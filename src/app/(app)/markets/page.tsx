@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { searchTickers, getMarketIndex, getTopGainersLosers, getVolumeLeaders, getSectorPerformance, getEarningsCalendar, getEconomicCalendar, getBatchQuotes, getFearGreedIndex } from "@/app/actions/market";
+import { searchTickers, getMarketIndex, getTopGainersLosers, getVolumeLeaders, getSectorPerformance, getEarningsCalendar, getEconomicCalendar, getBatchQuotes, getMarketBreadth, getFearGreedIndex } from "@/app/actions/market";
+import { auth, db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 // ─── Types ────────────────────────────────────────────────────
 type IndexCard = { label: string; symbol: string; price: number; change: number; pct: number; path: string };
@@ -12,13 +14,26 @@ type EarningItem = { symbol: string; name: string; epsEstimate: string };
 type EconomicEvent = { time: string; event: string; impact: "high" | "medium" | "low"; forecast: string };
 
 // ─── Helpers ──────────────────────────────────────────────────
-function randomSparkPath(): string {
-    const pts: { x: number; y: number }[] = [{ x: 0, y: 25 + Math.random() * 20 }];
-    for (let i = 1; i <= 16; i++) {
-        const prev = pts[i - 1].y;
-        pts.push({ x: i * 6.25, y: Math.max(5, Math.min(45, prev + (Math.random() - 0.48) * 12)) });
-    }
-    return `M ${pts[0].x},${pts[0].y}` + pts.slice(1).map(p => ` L ${p.x},${p.y}`).join("");
+function generateSparklinePath(prices: number[]): string {
+    if (!prices || prices.length === 0) return "";
+    if (prices.length === 1) return `M 0,25 L 100,25`;
+
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    const range = max - min || 1;
+
+    const padY = 5;
+    const height = 50 - padY * 2;
+    const scaleX = 100 / (prices.length - 1);
+
+    const pts = prices.map((p, i) => {
+        const x = i * scaleX;
+        const normalized = (p - min) / range;
+        const y = padY + height - (normalized * height);
+        return { x, y };
+    });
+
+    return `M ${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)}` + pts.slice(1).map(p => ` L ${p.x.toFixed(2)},${p.y.toFixed(2)}`).join("");
 }
 
 function fmtVol(n: number): string {
@@ -29,8 +44,8 @@ function fmtVol(n: number): string {
 }
 
 function sectorColor(pct: number): { bg: string; text: string } {
-    if (pct >= 2) return { bg: "bg-[#00c805]/20 border-[#00c805]/30", text: "text-[#00c805]" };
-    if (pct > 0) return { bg: "bg-[#00c805]/10 border-[#00c805]/15", text: "text-[#00c805]/80" };
+    if (pct >= 2) return { bg: "bg-[#4ade9a]/20 border-[#4ade9a]/30", text: "text-[#4ade9a]" };
+    if (pct > 0) return { bg: "bg-[#4ade9a]/10 border-[#4ade9a]/15", text: "text-[#4ade9a]/80" };
     if (pct > -2) return { bg: "bg-red-500/10 border-red-500/15", text: "text-red-400/80" };
     return { bg: "bg-red-500/20 border-red-500/30", text: "text-red-500" };
 }
@@ -40,15 +55,15 @@ const WATCHLIST = ["NVDA", "AAPL", "TSLA", "AMZN", "MSFT", "GOOGL", "META"];
 // ─── Sub-components ───────────────────────────────────────────
 function IndexCardComponent({ card }: { card: IndexCard }) {
     const pos = card.pct >= 0;
-    const stroke = pos ? "#00c805" : "#ef4444";
+    const stroke = pos ? "#4ade9a" : "#ef4444";
     const fillId = `grad-${card.symbol}`;
     return (
-        <div className="flex-1 min-w-0 bg-[#111] border border-zinc-800 rounded-2xl p-3 flex flex-col gap-1">
-            <span className="text-[11px] font-bold text-zinc-500 tracking-wider uppercase">{card.label}</span>
+        <div className="flex-1 min-w-0 bg-gradient-to-br from-[#1a2a22] to-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-3 flex flex-col gap-1 shadow-lg">
+            <span className="text-[11px] font-bold text-[#a8a8a0] tracking-wider uppercase">{card.label}</span>
             <span className="text-lg font-bold leading-tight">
                 {card.price > 0 ? card.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
             </span>
-            <span className={`text-[11px] font-semibold ${pos ? "text-[#00c805]" : "text-red-500"}`}>
+            <span className={`text-[11px] font-semibold ${pos ? "text-[#4ade9a]" : "text-red-500"}`}>
                 {pos ? "▲" : "▼"} {Math.abs(card.pct).toFixed(2)}%
             </span>
             <svg viewBox="0 0 100 50" className="w-full h-8 mt-1" preserveAspectRatio="none">
@@ -70,23 +85,23 @@ function MoverRow({ item, router, showVol }: { item: MoverItem; router: ReturnTy
     return (
         <div
             onClick={() => router.push(`/markets/${item.symbol}`)}
-            className="flex items-center px-4 py-3 hover:bg-zinc-800/50 cursor-pointer transition-colors border-b border-zinc-800 last:border-0 group"
+            className="flex items-center px-4 py-3 hover:bg-[#1a2a22] cursor-pointer transition-colors border-b border-[#2a3d30]/50 last:border-0 group"
         >
             <div className="flex flex-col flex-1 min-w-0">
-                <span className="font-bold text-sm">{item.symbol}</span>
-                <span className="text-xs text-zinc-500 truncate">{item.name}</span>
-                {showVol && <span className="text-[11px] text-zinc-600 mt-0.5">Vol: {fmtVol(item.volume)}</span>}
+                <span className="font-bold text-sm text-[#f0ede8]">{item.symbol}</span>
+                <span className="text-xs text-[#a8a8a0] truncate">{item.name}</span>
+                {showVol && <span className="text-[11px] text-[#a8a8a0] mt-0.5">Vol: {fmtVol(item.volume)}</span>}
             </div>
             <div className="flex flex-col items-end mr-3">
-                <span className="font-semibold text-sm">${item.price.toFixed(2)}</span>
-                <span className={`text-xs font-bold ${pos ? "text-[#00c805]" : "text-red-500"}`}>
+                <span className="font-semibold text-sm text-[#f0ede8]">${item.price.toFixed(2)}</span>
+                <span className={`text-xs font-bold ${pos ? "text-[#4ade9a]" : "text-red-500"}`}>
                     {pos ? "+" : ""}{item.changesPercentage.toFixed(2)}%
                 </span>
             </div>
             <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={e => e.stopPropagation()}>
                 <button
                     onClick={() => router.push(`/markets/${item.symbol}`)}
-                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[#00c805]/15 text-[#00c805] border border-[#00c805]/30 hover:bg-[#00c805]/30 transition-colors"
+                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[#4ade9a]/15 text-[#4ade9a] border border-[#4ade9a]/30 hover:bg-[#4ade9a]/30 transition-colors"
                 >
                     Buy
                 </button>
@@ -114,14 +129,14 @@ export default function MarketsPage() {
 
     // Indices
     const [indices, setIndices] = useState<IndexCard[]>([
-        { label: "S&P 500", symbol: "SPY", price: 0, change: 0, pct: 0, path: randomSparkPath() },
-        { label: "Nasdaq", symbol: "QQQ", price: 0, change: 0, pct: 0, path: randomSparkPath() },
-        { label: "Dow Jones", symbol: "DIA", price: 0, change: 0, pct: 0, path: randomSparkPath() },
+        { label: "S&P 500", symbol: "SPY", price: 0, change: 0, pct: 0, path: "" },
+        { label: "Nasdaq", symbol: "QQQ", price: 0, change: 0, pct: 0, path: "" },
+        { label: "Dow Jones", symbol: "DIA", price: 0, change: 0, pct: 0, path: "" },
     ]);
 
-    // Breadth (simulated)
-    const [breadth] = useState({ up: 2645, down: 1189 });
-    const breadthTotal = breadth.up + breadth.down;
+    // Breadth
+    const [breadth, setBreadth] = useState({ up: 0, down: 0 });
+    const breadthTotal = breadth.up + breadth.down || 1; // Prevent div by 0 on load
 
     // Discovery tab
     const [discoveryTab, setDiscoveryTab] = useState<"gainers" | "losers" | "volume" | "movers">("gainers");
@@ -157,12 +172,15 @@ export default function MarketsPage() {
 
     // ── Data loading ──────────────────────────────────────────
     useEffect(() => {
+        // Broad data load
+        getMarketBreadth().then(setBreadth);
+
         // Big Three indices
-        Promise.all([getMarketIndex("SPY"), getMarketIndex("QQQ"), getMarketIndex("DIA")]).then(([spy, qqq, dia]) => {
+        Promise.all([getMarketIndex("^GSPC"), getMarketIndex("^IXIC"), getMarketIndex("^DJI")]).then(([spy, qqq, dia]) => {
             setIndices([
-                { label: "S&P 500", symbol: "SPY", price: spy.price, change: spy.change, pct: spy.changesPercentage, path: randomSparkPath() },
-                { label: "Nasdaq", symbol: "QQQ", price: qqq.price, change: qqq.change, pct: qqq.changesPercentage, path: randomSparkPath() },
-                { label: "Dow Jones", symbol: "DIA", price: dia.price, change: dia.change, pct: dia.changesPercentage, path: randomSparkPath() },
+                { label: "S&P 500", symbol: "^GSPC", price: spy.price, change: spy.change, pct: spy.changesPercentage, path: generateSparklinePath(spy.sparkline) },
+                { label: "Nasdaq", symbol: "^IXIC", price: qqq.price, change: qqq.change, pct: qqq.changesPercentage, path: generateSparklinePath(qqq.sparkline) },
+                { label: "Dow Jones", symbol: "^DJI", price: dia.price, change: dia.change, pct: dia.changesPercentage, path: generateSparklinePath(dia.sparkline) },
             ]);
         });
 
@@ -171,11 +189,11 @@ export default function MarketsPage() {
             setGainers(gl.gainers);
             setLosers(gl.losers);
             setVolumeLeaders(vol);
-            // Movers: stocks with |pct| > 2
+            // Movers: stocks with |pct| > 0.5 to ensure large caps appear
             const allMovers = [...gl.gainers, ...gl.losers, ...vol];
             const seen = new Set<string>();
             const gapList = allMovers.filter(m => {
-                if (Math.abs(m.changesPercentage) >= 2 && !seen.has(m.symbol)) { seen.add(m.symbol); return true; }
+                if (Math.abs(m.changesPercentage) >= 0.5 && !seen.has(m.symbol)) { seen.add(m.symbol); return true; }
                 return false;
             }).sort((a, b) => Math.abs(b.changesPercentage) - Math.abs(a.changesPercentage));
             setMovers(gapList);
@@ -193,15 +211,38 @@ export default function MarketsPage() {
         });
 
         // Watchlist
-        getBatchQuotes(WATCHLIST).then((data: any[]) => {
-            setWatchlistData(WATCHLIST.map(sym => {
-                const q = data.find((x: any) => x.symbol === sym);
-                return { symbol: sym, price: q?.price ?? 0, pct: q?.changesPercentage ?? 0, pos: (q?.changesPercentage ?? 0) >= 0 };
-            }));
+        const loadWatchlist = async () => {
+            let symbolsToLoad = WATCHLIST;
+            if (auth.currentUser) {
+                try {
+                    const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
+                    if (userDoc.exists() && userDoc.data().watchlist?.length > 0) {
+                        symbolsToLoad = userDoc.data().watchlist.slice(0, 10);
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch custom watchlist", e);
+                }
+            }
+            getBatchQuotes(symbolsToLoad).then((data: any[]) => {
+                setWatchlistData(symbolsToLoad.map(sym => {
+                    const q = data.find((x: any) => x.symbol === sym);
+                    return { symbol: sym, price: q?.price ?? 0, pct: q?.changesPercentage ?? 0, pos: (q?.changesPercentage ?? 0) >= 0 };
+                }));
+            });
+        };
+
+        const unsubAuth = auth.onAuthStateChanged(() => {
+            loadWatchlist();
         });
 
         // Fear & Greed (CNN API)
         getFearGreedIndex().then(setFearGreedData);
+        // initial load if auth is already resolved, though onAuthStateChanged fires immediately anyway.
+        if (auth.currentUser) {
+            loadWatchlist();
+        }
+
+        return () => unsubAuth();
     }, []);
 
     // Search with debounce
@@ -228,19 +269,17 @@ export default function MarketsPage() {
     };
 
     return (
-        <div className="flex flex-col w-full animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans text-white pb-24 md:pb-8 max-w-2xl mx-auto gap-0">
-
-            {/* ── Data Freshness Badge ── */}
-            <div className="flex items-center justify-end px-4 mt-1 mb-1">
-                <span className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-400/80 bg-amber-400/10 border border-amber-400/20 rounded-full px-2.5 py-0.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                    Data delayed 15 min
-                </span>
-            </div>
+        <div className="flex flex-col w-full animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans text-[#f0ede8] pb-24 md:pb-8 max-w-2xl mx-auto gap-0">
+            {/* ── Page Header ── */}
+            <header className="px-4 mt-2 mb-4">
+                <h1 className="text-4xl md:text-5xl font-serif font-bold tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>
+                    Markets
+                </h1>
+            </header>
 
             {/* ── Big Three Indices ── */}
             <div className="px-4 mt-2">
-                <h2 className="text-xs font-bold tracking-widest text-zinc-500 uppercase mb-3">Market Overview</h2>
+                <h2 className="text-xs font-bold tracking-widest text-[#a8a8a0] uppercase mb-3">Market Overview</h2>
                 <div className="flex gap-2.5">
                     {indices.map(c => <IndexCardComponent key={c.symbol} card={c} />)}
                 </div>
@@ -248,37 +287,37 @@ export default function MarketsPage() {
 
             {/* ── Market Breadth ── */}
             <div className="px-4 mt-4">
-                <div className="bg-[#111] border border-zinc-800 rounded-2xl p-4">
+                <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-5 shadow-lg">
                     <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-bold tracking-widest text-zinc-500 uppercase">Market Breadth</span>
-                        <span className="text-xs text-zinc-500">Advance / Decline</span>
+                        <span className="text-xs font-bold tracking-widest text-[#a8a8a0] uppercase">Market Breadth</span>
+                        <span className="text-xs text-[#a8a8a0]">Advance / Decline</span>
                     </div>
                     <div className="flex items-center gap-3 mb-2">
-                        <span className="font-bold text-[#00c805] text-sm">↑ {breadth.up.toLocaleString()}</span>
-                        <span className="text-zinc-600 text-xs">vs</span>
+                        <span className="font-bold text-[#4ade9a] text-sm">↑ {breadth.up.toLocaleString()}</span>
+                        <span className="text-[#a8a8a0] text-xs">vs</span>
                         <span className="font-bold text-red-500 text-sm">↓ {breadth.down.toLocaleString()}</span>
                     </div>
                     <div className="w-full h-2.5 rounded-full overflow-hidden flex bg-red-500/20">
                         <div
-                            className="h-full rounded-full bg-gradient-to-r from-[#00c805] to-[#00e306] transition-all duration-700"
+                            className="h-full rounded-full bg-gradient-to-r from-[#4ade9a] to-[#22c55e] transition-all duration-700"
                             style={{ width: `${(breadth.up / breadthTotal) * 100}%` }}
                         />
                     </div>
-                    <div className="flex justify-between mt-1">
-                        <span className="text-[10px] text-zinc-600">{((breadth.up / breadthTotal) * 100).toFixed(0)}% advancing</span>
-                        <span className="text-[10px] text-zinc-600">{((breadth.down / breadthTotal) * 100).toFixed(0)}% declining</span>
+                    <div className="flex justify-between mt-1.5">
+                        <span className="text-[10px] text-[#a8a8a0]">{((breadth.up / breadthTotal) * 100).toFixed(0)}% advancing</span>
+                        <span className="text-[10px] text-[#a8a8a0]">{((breadth.down / breadthTotal) * 100).toFixed(0)}% declining</span>
                     </div>
                 </div>
             </div>
 
             {/* ── Fear & Greed ── */}
             <div className="px-4 mt-4">
-                <div className="bg-[#111] border border-zinc-800 rounded-2xl p-4">
+                <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-5 shadow-lg">
                     <div className="flex justify-between items-center mb-3">
-                        <span className="text-xs font-bold tracking-widest text-zinc-500 uppercase">Fear &amp; Greed Index</span>
+                        <span className="text-xs font-bold tracking-widest text-[#a8a8a0] uppercase">Fear &amp; Greed Index</span>
                         <span className="text-xs font-bold" style={{ color: fearGreedColor }}>{fearGreedLabel}</span>
                     </div>
-                    <div className="relative w-full h-3 rounded-full bg-gradient-to-r from-red-600 via-amber-400 to-[#00c805]">
+                    <div className="relative w-full h-3 rounded-full bg-gradient-to-r from-red-600 via-amber-400 to-[#4ade9a]">
                         <div
                             className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow-lg shadow-black/50 transition-all duration-700"
                             style={{ left: `calc(${fearGreed}% - 8px)`, backgroundColor: fearGreedColor }}
@@ -287,17 +326,17 @@ export default function MarketsPage() {
                     <div className="flex justify-between mt-1.5">
                         <span className="text-[10px] text-red-500 font-semibold">Extreme Fear</span>
                         <span className="text-[10px] font-bold text-2xl" style={{ color: fearGreedColor }}>{fearGreed}</span>
-                        <span className="text-[10px] text-[#00c805] font-semibold">Extreme Greed</span>
+                        <span className="text-[10px] text-[#4ade9a] font-semibold">Extreme Greed</span>
                     </div>
                 </div>
             </div>
 
             {/* ── Search Bar ── */}
             <div ref={searchRef} className="relative px-4 mt-5">
-                <div className="relative flex items-center bg-[#1a1a1a] border border-zinc-600/60 rounded-xl py-2 pl-4 pr-3 gap-3 transition-all focus-within:border-zinc-400 focus-within:ring-2 focus-within:ring-zinc-500/30">
-                    <span className="text-zinc-400 shrink-0">
+                <div className="relative flex items-center bg-[#1a2a22] border border-[#2a3d30] rounded-xl py-2 pl-4 pr-3 gap-3 transition-all focus-within:border-[#4ade9a]/50 focus-within:ring-2 focus-within:ring-[#4ade9a]/20">
+                    <span className="text-[#a8a8a0] shrink-0">
                         {isSearching ? (
-                            <span className="w-4 h-4 block border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+                            <span className="w-4 h-4 block border-2 border-[#a8a8a0] border-t-transparent rounded-full animate-spin" />
                         ) : (
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         )}
@@ -308,47 +347,47 @@ export default function MarketsPage() {
                         value={searchQuery}
                         onChange={e => { setSearchQuery(e.target.value); setIsSearchDropdownOpen(true); }}
                         onFocus={() => searchResults.length > 0 && setIsSearchDropdownOpen(true)}
-                        className="flex-1 min-w-0 bg-transparent text-white placeholder-zinc-400 text-sm focus:outline-none"
+                        className="flex-1 min-w-0 bg-transparent text-[#f0ede8] placeholder-[#a8a8a0] text-sm focus:outline-none"
                     />
                     {searchResults.length > 0 && (
-                        <span className="shrink-0 text-zinc-400 text-sm font-medium bg-[#1f1f1f] border border-zinc-600/60 rounded-full px-3 py-1">
+                        <span className="shrink-0 text-[#a8a8a0] text-sm font-medium bg-[#0a120f] border border-[#2a3d30]/50 rounded-full px-3 py-1">
                             {searchResults.length} result{searchResults.length !== 1 ? "s" : ""}
                         </span>
                     )}
                 </div>
                 {isSearchDropdownOpen && (searchResults.length > 0 || (searchQuery.length >= 2 && !isSearching)) && (
-                    <div className="absolute top-full left-4 right-4 mt-1 bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-xl z-50 max-h-64 overflow-y-auto">
+                    <div className="absolute top-full left-4 right-4 mt-1 bg-[#111c18] border border-[#2a3d30] rounded-xl overflow-hidden shadow-2xl z-50 max-h-64 overflow-y-auto">
                         {searchResults.length > 0 ? searchResults.map(r => (
                             <button key={r.symbol} type="button"
                                 onClick={() => { setSearchQuery(""); setIsSearchDropdownOpen(false); setSearchResults([]); router.push(`/markets/${r.symbol}`); }}
-                                className="w-full flex justify-between items-center px-4 py-3 hover:bg-zinc-800 text-left transition">
+                                className="w-full flex justify-between items-center px-4 py-3 hover:bg-[#1a2a22] text-left transition">
                                 <div>
-                                    <span className="font-bold">{r.symbol}</span>
-                                    <span className="text-zinc-500 text-sm ml-2">{r.name}</span>
+                                    <span className="font-bold text-[#f0ede8]">{r.symbol}</span>
+                                    <span className="text-[#a8a8a0] text-sm ml-2">{r.name}</span>
                                 </div>
-                                <span className="text-zinc-400 text-sm">View →</span>
+                                <span className="text-[#a8a8a0] text-sm">View →</span>
                             </button>
-                        )) : <div className="px-4 py-6 text-center text-zinc-500 text-sm">No results found</div>}
+                        )) : <div className="px-4 py-6 text-center text-[#a8a8a0] text-sm">No results found</div>}
                     </div>
                 )}
             </div>
 
             {/* ── Quick Watchlist ── */}
             <div className="px-4 mt-5">
-                <h2 className="text-xs font-bold tracking-widest text-zinc-500 uppercase mb-3">Quick Watch</h2>
+                <h2 className="text-xs font-bold tracking-widest text-[#a8a8a0] uppercase mb-3">Quick Watch</h2>
                 <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                     {watchlistData.length === 0
                         ? WATCHLIST.map(s => (
-                            <div key={s} className="flex flex-col items-center bg-[#111] border border-zinc-800 rounded-2xl px-4 py-2.5 min-w-[72px] shrink-0 animate-pulse">
-                                <span className="font-bold text-sm">{s}</span>
-                                <span className="text-xs text-zinc-600 mt-1">—</span>
+                            <div key={s} className="flex flex-col items-center bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl px-4 py-2.5 min-w-[72px] shrink-0 animate-pulse">
+                                <span className="font-bold text-sm text-[#f0ede8]">{s}</span>
+                                <span className="text-xs text-[#a8a8a0] mt-1">—</span>
                             </div>
                         ))
                         : watchlistData.map(w => (
                             <button key={w.symbol} onClick={() => router.push(`/markets/${w.symbol}`)}
-                                className="flex flex-col items-center bg-[#111] border border-zinc-800 rounded-2xl px-4 py-2.5 min-w-[72px] shrink-0 hover:bg-zinc-800 transition-colors">
-                                <span className="font-bold text-sm">{w.symbol}</span>
-                                <span className={`text-[11px] font-semibold mt-0.5 ${w.pos ? "text-[#00c805]" : "text-red-500"}`}>
+                                className="flex flex-col items-center bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl px-4 py-2.5 min-w-[72px] shrink-0 hover:bg-[#1a2a22] transition-colors">
+                                <span className="font-bold text-sm text-[#f0ede8]">{w.symbol}</span>
+                                <span className={`text-[11px] font-semibold mt-0.5 ${w.pos ? "text-[#4ade9a]" : "text-red-500"}`}>
                                     {w.pos ? "+" : ""}{w.pct.toFixed(2)}%
                                 </span>
                             </button>
@@ -358,32 +397,32 @@ export default function MarketsPage() {
 
             {/* ── Discovery Lists ── */}
             <div className="px-4 mt-5">
-                <h2 className="text-xs font-bold tracking-widest text-zinc-500 uppercase mb-3">High-Velocity Discovery</h2>
+                <h2 className="text-xs font-bold tracking-widest text-[#a8a8a0] uppercase mb-3">High-Velocity Discovery</h2>
                 {/* Tab bar */}
-                <div className="flex gap-1 bg-[#111] border border-zinc-800 rounded-xl p-1 mb-3">
+                <div className="relative flex rounded-full bg-[#1a2a22] border border-[#2a3d30] p-1 mb-3">
                     {(["gainers", "losers", "volume", "movers"] as const).map(tab => (
                         <button
                             key={tab}
                             onClick={() => setDiscoveryTab(tab)}
-                            className={`flex-1 text-xs font-bold py-1.5 rounded-lg capitalize transition-all duration-200 ${discoveryTab === tab
-                                ? "bg-zinc-700 text-white"
-                                : "text-zinc-500 hover:text-zinc-300"
+                            className={`flex-1 text-xs font-bold py-1.5 rounded-full capitalize transition-all duration-200 ${discoveryTab === tab
+                                ? "bg-[#4ade9a] text-[#0a120f]"
+                                : "text-[#a8a8a0] hover:text-[#f0ede8]"
                                 }`}
                         >
                             {tab === "gainers" ? "↑ Gainers" : tab === "losers" ? "↓ Losers" : tab === "volume" ? "⚡ Volume" : "⬡ Movers"}
                         </button>
                     ))}
                 </div>
-                <div className="bg-[#111] border border-zinc-800 rounded-2xl overflow-hidden">
+                <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl overflow-hidden shadow-lg">
                     {moversLoading ? (
                         [...Array(5)].map((_, i) => (
-                            <div key={i} className="flex justify-between items-center px-4 py-3 border-b border-zinc-800 last:border-0 animate-pulse">
-                                <div className="flex flex-col gap-1.5"><div className="w-12 h-3 bg-zinc-800 rounded" /><div className="w-24 h-2.5 bg-zinc-800 rounded" /></div>
-                                <div className="flex flex-col items-end gap-1.5"><div className="w-14 h-3 bg-zinc-800 rounded" /><div className="w-10 h-2.5 bg-zinc-800 rounded" /></div>
+                            <div key={i} className="flex justify-between items-center px-4 py-3 border-b border-[#2a3d30]/50 last:border-0 animate-pulse">
+                                <div className="flex flex-col gap-1.5"><div className="w-12 h-3 bg-[#1a2a22] rounded" /><div className="w-24 h-2.5 bg-[#1a2a22] rounded" /></div>
+                                <div className="flex flex-col items-end gap-1.5"><div className="w-14 h-3 bg-[#1a2a22] rounded" /><div className="w-10 h-2.5 bg-[#1a2a22] rounded" /></div>
                             </div>
                         ))
                     ) : (discoveryItems[discoveryTab] || []).length === 0 ? (
-                        <div className="px-4 py-8 text-center text-zinc-600 text-sm">No data available</div>
+                        <div className="px-4 py-8 text-center text-[#a8a8a0] text-sm">No data available</div>
                     ) : (
                         (discoveryItems[discoveryTab] || []).map(item => (
                             <MoverRow key={item.symbol} item={item} router={router} showVol={showVol} />
@@ -394,17 +433,17 @@ export default function MarketsPage() {
 
             {/* ── Sector Performance Heatmap ── */}
             <div className="px-4 mt-5">
-                <h2 className="text-xs font-bold tracking-widest text-zinc-500 uppercase mb-3">Sector Performance</h2>
+                <h2 className="text-xs font-bold tracking-widest text-[#a8a8a0] uppercase mb-3">Sector Performance</h2>
                 <div className="grid grid-cols-3 gap-2">
                     {(sectors.length === 0 ? Array(11).fill(null) : sectors).map((s, i) =>
                         s === null ? (
-                            <div key={i} className="rounded-2xl border border-zinc-800 h-16 animate-pulse bg-zinc-900" />
+                            <div key={i} className="rounded-3xl border border-[#2a3d30]/50 h-16 animate-pulse bg-[#111c18]" />
                         ) : (() => {
                             const { bg, text } = sectorColor(s.changesPercentage);
                             return (
                                 <button key={s.symbol} onClick={() => router.push(`/markets/${s.symbol}`)}
                                     className={`flex flex-col items-center justify-center rounded-2xl border p-2.5 h-16 transition-transform hover:scale-105 ${bg}`}>
-                                    <span className="text-[11px] font-bold text-white/90 leading-tight text-center">{s.shortName}</span>
+                                    <span className="text-[11px] font-bold text-[#f0ede8] leading-tight text-center">{s.shortName}</span>
                                     <span className={`text-[13px] font-black mt-0.5 ${text}`}>
                                         {s.changesPercentage >= 0 ? "+" : ""}{s.changesPercentage.toFixed(2)}%
                                     </span>
@@ -417,41 +456,41 @@ export default function MarketsPage() {
 
             {/* ── Events Calendar ── */}
             <div className="px-4 mt-5">
-                <h2 className="text-xs font-bold tracking-widest text-zinc-500 uppercase mb-1">Live Events</h2>
-                <p className="text-[11px] text-zinc-600 mb-3">{today}</p>
+                <h2 className="text-xs font-bold tracking-widest text-[#a8a8a0] uppercase mb-1">Live Events</h2>
+                <p className="text-[11px] text-[#a8a8a0] mb-3">{today}</p>
 
                 {/* Earnings */}
-                <div className="bg-[#111] border border-zinc-800 rounded-2xl overflow-hidden mb-3">
-                    <div className="flex border-b border-zinc-800">
-                        <div className="flex-1 border-r border-zinc-800 px-3 py-2">
-                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">🌅 Before Open</span>
+                <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl overflow-hidden mb-3 shadow-lg">
+                    <div className="flex border-b border-[#2a3d30]/50">
+                        <div className="flex-1 border-r border-[#2a3d30]/50 px-3 py-2">
+                            <span className="text-[10px] font-bold text-[#a8a8a0] uppercase tracking-wider">🌅 Before Open</span>
                         </div>
                         <div className="flex-1 px-3 py-2">
-                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">🌆 After Close</span>
+                            <span className="text-[10px] font-bold text-[#a8a8a0] uppercase tracking-wider">🌆 After Close</span>
                         </div>
                     </div>
                     <div className="flex">
-                        <div className="flex-1 border-r border-zinc-800 py-1">
+                        <div className="flex-1 border-r border-[#2a3d30]/50 py-1">
                             {earningsBefore.map(e => (
                                 <button key={e.symbol} onClick={() => router.push(`/markets/${e.symbol}`)}
-                                    className="w-full flex items-center justify-between px-3 py-2 hover:bg-zinc-800/50 transition-colors">
+                                    className="w-full flex items-center justify-between px-3 py-2 hover:bg-[#1a2a22] transition-colors">
                                     <div className="flex flex-col items-start">
-                                        <span className="font-bold text-sm">{e.symbol}</span>
-                                        <span className="text-[10px] text-zinc-500">{e.epsEstimate}</span>
+                                        <span className="font-bold text-sm text-[#f0ede8]">{e.symbol}</span>
+                                        <span className="text-[10px] text-[#a8a8a0]">{e.epsEstimate}</span>
                                     </div>
-                                    <span className="text-[10px] text-zinc-500">EPS est.</span>
+                                    <span className="text-[10px] text-[#a8a8a0]">EPS est.</span>
                                 </button>
                             ))}
                         </div>
                         <div className="flex-1 py-1">
                             {earningsAfter.map(e => (
                                 <button key={e.symbol} onClick={() => router.push(`/markets/${e.symbol}`)}
-                                    className="w-full flex items-center justify-between px-3 py-2 hover:bg-zinc-800/50 transition-colors">
+                                    className="w-full flex items-center justify-between px-3 py-2 hover:bg-[#1a2a22] transition-colors">
                                     <div className="flex flex-col items-start">
-                                        <span className="font-bold text-sm">{e.symbol}</span>
-                                        <span className="text-[10px] text-zinc-500">{e.epsEstimate}</span>
+                                        <span className="font-bold text-sm text-[#f0ede8]">{e.symbol}</span>
+                                        <span className="text-[10px] text-[#a8a8a0]">{e.epsEstimate}</span>
                                     </div>
-                                    <span className="text-[10px] text-zinc-500">EPS est.</span>
+                                    <span className="text-[10px] text-[#a8a8a0]">EPS est.</span>
                                 </button>
                             ))}
                         </div>
@@ -459,20 +498,20 @@ export default function MarketsPage() {
                 </div>
 
                 {/* Economic Releases */}
-                <div className="bg-[#111] border border-zinc-800 rounded-2xl overflow-hidden">
-                    <div className="px-4 py-2.5 border-b border-zinc-800">
-                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">📊 Economic Releases</span>
+                <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl overflow-hidden shadow-lg">
+                    <div className="px-4 py-2.5 border-b border-[#2a3d30]/50">
+                        <span className="text-[10px] font-bold text-[#a8a8a0] uppercase tracking-wider">📊 Economic Releases</span>
                     </div>
                     {economicEvents.map((ev, i) => (
-                        <div key={i} className="flex items-center px-4 py-3 border-b border-zinc-800 last:border-0 gap-3">
-                            <span className={`w-2 h-2 rounded-full shrink-0 ${ev.impact === "high" ? "bg-red-500" : ev.impact === "medium" ? "bg-amber-400" : "bg-zinc-600"}`} />
+                        <div key={i} className="flex items-center px-4 py-3 border-b border-[#2a3d30]/50 last:border-0 gap-3">
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${ev.impact === "high" ? "bg-red-500" : ev.impact === "medium" ? "bg-amber-400" : "bg-[#2a3d30]"}`} />
                             <div className="flex flex-col flex-1 min-w-0">
-                                <span className="text-sm font-semibold">{ev.event}</span>
-                                <span className="text-[11px] text-zinc-500">{ev.time}</span>
+                                <span className="text-sm font-semibold text-[#f0ede8]">{ev.event}</span>
+                                <span className="text-[11px] text-[#a8a8a0]">{ev.time}</span>
                             </div>
                             <div className="flex flex-col items-end">
-                                <span className="text-xs text-zinc-400 font-semibold">{ev.forecast}</span>
-                                <span className={`text-[10px] capitalize ${ev.impact === "high" ? "text-red-400" : ev.impact === "medium" ? "text-amber-400" : "text-zinc-600"}`}>{ev.impact}</span>
+                                <span className="text-xs text-[#a8a8a0] font-semibold">{ev.forecast}</span>
+                                <span className={`text-[10px] capitalize ${ev.impact === "high" ? "text-red-400" : ev.impact === "medium" ? "text-amber-400" : "text-[#a8a8a0]"}`}>{ev.impact}</span>
                             </div>
                         </div>
                     ))}

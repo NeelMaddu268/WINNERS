@@ -4,7 +4,7 @@ import { getChartData } from "./market";
 
 const STARTING_CASH = 10000;
 
-export type Transaction = { type: "buy" | "sell"; ticker: string; name: string; shares: number; timestamp: string; price?: number; total?: number };
+export type Transaction = { type: "buy" | "sell"; ticker: string; name: string; shares: number; timestamp: string; price?: number; total?: number; profitAmount?: number; profitPercent?: number };
 export type Position = { ticker: string; name: string; shares: number; avgCost: number; costBasis: number };
 
 export async function recalculatePortfolioFromTransactions(

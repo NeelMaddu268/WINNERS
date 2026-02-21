@@ -310,15 +310,22 @@ export default function TickerPage() {
                 }
             }
 
-            const tx = { type: tradeMode, ticker: tickerData.ticker, name: tickerData.name, shares, timestamp };
-            await updateDoc(userRef, {
-                transactionHistory: [...transactionHistory, tx],
-            });
-
-            // Calculate Result Details for UI
+            // Calculate Result Details and save to tx history
             const isSell = tradeMode === "sell";
             const profitAmount = isSell ? (execPrice - pos!.avgCost) * shares : 0;
             const profitPercent = isSell && pos!.avgCost > 0 ? ((execPrice - pos!.avgCost) / pos!.avgCost) * 100 : 0;
+
+            const tx: import("../../../actions/portfolio").Transaction = {
+                type: tradeMode,
+                ticker: tickerData.ticker,
+                name: tickerData.name,
+                shares,
+                timestamp,
+                ...(isSell && { profitAmount, profitPercent })
+            };
+            await updateDoc(userRef, {
+                transactionHistory: [...transactionHistory, tx],
+            });
 
             setTradeResultDetails({
                 execPrice,
@@ -334,7 +341,9 @@ export default function TickerPage() {
                 const feedRef = collection(db, "global_feed");
                 let actionText = tradeMode === "buy" ? `purchased ${shares.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares of` : `sold ${shares.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares of`;
                 if (isSell) {
-                    const profitStr = profitAmount >= 0 ? `making a $${profitAmount.toFixed(2)} profit (+${profitPercent.toFixed(2)}%) on` : `taking a $${Math.abs(profitAmount).toFixed(2)} loss (${profitPercent.toFixed(2)}%) on`;
+                    const safeProfitAmt = profitAmount ?? 0;
+                    const safeProfitPct = profitPercent ?? 0;
+                    const profitStr = safeProfitAmt >= 0 ? `making a $${safeProfitAmt.toFixed(2)} profit (+${safeProfitPct.toFixed(2)}%) on` : `taking a $${Math.abs(safeProfitAmt).toFixed(2)} loss (${safeProfitPct.toFixed(2)}%) on`;
                     actionText = `sold ${shares.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares, ${profitStr}`;
                 }
 

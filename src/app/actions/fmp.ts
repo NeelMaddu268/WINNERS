@@ -28,17 +28,14 @@ export async function getMarketIndex(symbol: string = "^GSPC") {
             return cache[cacheKey].data;
         }
 
-        const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=15m&range=1d`, {
+        const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`, {
             headers: { 'User-Agent': 'Mozilla/5.0' },
-            next: { revalidate: 900 }
         });
 
         if (!res.ok) throw new Error("Yahoo Finance API error");
 
         const json = await res.json();
         const result = json.chart.result?.[0]?.meta;
-        const quotes = json.chart.result?.[0]?.indicators?.quote?.[0]?.close || [];
-        const sparkline = quotes.filter((p: number | null) => p !== null) as number[];
 
         if (result) {
             const price = result.regularMarketPrice;
@@ -51,17 +48,16 @@ export async function getMarketIndex(symbol: string = "^GSPC") {
                 change: change,
                 changesPercentage: changesPercentage,
                 name: "S&P 500",
-                symbol: symbol,
-                sparkline: sparkline
+                symbol: symbol
             };
 
             cache[cacheKey] = { data: data, expires: Date.now() + CACHE_TTL_MS };
             return data;
         }
-        return { ...MOCK_INDEX, sparkline: [] };
+        return MOCK_INDEX;
     } catch (error) {
         console.error("Failed to fetch market index from Yahoo:", error);
-        return { ...MOCK_INDEX, sparkline: [] };
+        return MOCK_INDEX;
     }
 }
 
@@ -70,7 +66,7 @@ export async function searchTickers(query: string): Promise<{ symbol: string; na
     try {
         const res = await fetch(
             `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query.trim())}&quotesCount=10`,
-            { headers: { "User-Agent": "Mozilla/5.0" }, next: { revalidate: 60 } }
+            { headers: { "User-Agent": "Mozilla/5.0" } }
         );
         if (!res.ok) return [];
         const json = await res.json();
@@ -93,7 +89,6 @@ export async function getQuote(symbol: string): Promise<{ symbol: string; price:
     try {
         const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`, {
             headers: { "User-Agent": "Mozilla/5.0" },
-            next: { revalidate: 60 },
         });
         if (!res.ok) return null;
         const json = await res.json();
@@ -119,7 +114,7 @@ export async function getChartData(symbol: string): Promise<{ date: string; open
     try {
         const res = await fetch(
             `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=20y`,
-            { headers: { "User-Agent": "Mozilla/5.0" }, next: { revalidate: 900 } }
+            { headers: { "User-Agent": "Mozilla/5.0" } }
         );
         if (!res.ok) return [];
         const data = await res.json();
@@ -191,10 +186,10 @@ export async function getTopGainersLosers(): Promise<{
 
         const [gainersRes, losersRes] = await Promise.all([
             fetch("https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?scrIds=day_gainers&count=10", {
-                headers: { "User-Agent": "Mozilla/5.0" }, next: { revalidate: 900 }
+                headers: { "User-Agent": "Mozilla/5.0" },
             }),
             fetch("https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?scrIds=day_losers&count=10", {
-                headers: { "User-Agent": "Mozilla/5.0" }, next: { revalidate: 900 }
+                headers: { "User-Agent": "Mozilla/5.0" },
             }),
         ]);
 
@@ -233,7 +228,7 @@ export async function getVolumeLeaders(): Promise<{ symbol: string; name: string
         if (cache[cacheKey] && cache[cacheKey].expires > Date.now()) return cache[cacheKey].data;
 
         const res = await fetch("https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?scrIds=most_actives&count=10", {
-            headers: { "User-Agent": "Mozilla/5.0" }, next: { revalidate: 900 }
+            headers: { "User-Agent": "Mozilla/5.0" },
         });
         if (!res.ok) return MOCK;
         const json = await res.json();
@@ -318,28 +313,6 @@ export async function getEconomicCalendar(): Promise<{ time: string; event: stri
     ];
 }
 
-export async function getFearGreedIndex(): Promise<{ score: number; rating: string } | null> {
-    try {
-        const cacheKey = "fear_greed";
-        if (cache[cacheKey] && cache[cacheKey].expires > Date.now()) {
-            return cache[cacheKey].data;
-        }
-        const res = await fetch("https://production.dataviz.cnn.io/index/fearandgreed/graphdata", {
-            headers: { "User-Agent": "Mozilla/5.0" },
-            next: { revalidate: 3600 },
-        });
-        if (!res.ok) return null;
-        const json = await res.json();
-        const fg = json?.fear_and_greed;
-        if (!fg?.score) return null;
-        const data = { score: Math.round(fg.score), rating: fg.rating || "neutral" };
-        cache[cacheKey] = { data, expires: Date.now() + CACHE_TTL_MS };
-        return data;
-    } catch {
-        return null;
-    }
-}
-
 export async function getBatchQuotes(symbols: string[], skipCache?: boolean) {
     try {
         const symbolString = symbols.sort().join(",");
@@ -352,7 +325,7 @@ export async function getBatchQuotes(symbols: string[], skipCache?: boolean) {
         const fetchPromises = symbols.map(async (symbol) => {
             const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`, {
                 headers: { 'User-Agent': 'Mozilla/5.0' },
-                ...(skipCache ? { cache: 'no-store' as RequestCache } : { next: { revalidate: 900 } })
+                ...(skipCache ? { cache: 'no-store' as RequestCache } : {}),
             });
             if (!res.ok) return null;
 
@@ -383,49 +356,5 @@ export async function getBatchQuotes(symbols: string[], skipCache?: boolean) {
             symbol: sym,
             ...(MOCK_TICKERS[sym] || { price: 100, change: 0, changesPercentage: 0 })
         }));
-    }
-}
-
-// Predefined list of ~30 robust companies spanning different sectors to use as a market proxy
-const BREADTH_PROXY_SYMBOLS = [
-    "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "BRK-B", "TSLA", "LLY", "AVGO",
-    "JPM", "V", "UNH", "XOM", "MA", "JNJ", "PG", "HD", "COST", "MRK",
-    "ABBV", "CVX", "CRM", "BAC", "KO", "PEP", "LIN", "WMT", "TMO", "MCD"
-];
-
-export async function getMarketBreadth(): Promise<{ up: number; down: number }> {
-    try {
-        const cacheKey = "market_breadth_proxy";
-        if (cache[cacheKey] && cache[cacheKey].expires > Date.now()) {
-            return cache[cacheKey].data;
-        }
-
-        const quotes = await getBatchQuotes(BREADTH_PROXY_SYMBOLS);
-        let advancingCount = 0;
-        let decliningCount = 0;
-
-        for (const q of quotes) {
-            if (q.change > 0) advancingCount++;
-            else if (q.change < 0) decliningCount++;
-        }
-
-        // Default safety net to prevent division by zero
-        if (advancingCount === 0 && decliningCount === 0) {
-            advancingCount = 1; decliningCount = 1;
-        }
-
-        const totalTracked = advancingCount + decliningCount;
-        const upRatio = advancingCount / totalTracked;
-
-        // Scale it up to look like the entire US stock market breadth (roughly ~4000 stocks)
-        const totalMarketVol = 4000;
-        const totalUp = Math.round(upRatio * totalMarketVol);
-        const totalDown = totalMarketVol - totalUp;
-
-        const data = { up: totalUp, down: totalDown };
-        cache[cacheKey] = { data, expires: Date.now() + CACHE_TTL_MS };
-        return data;
-    } catch (err) {
-        return { up: 2150, down: 1850 }; // Safe mock
     }
 }
