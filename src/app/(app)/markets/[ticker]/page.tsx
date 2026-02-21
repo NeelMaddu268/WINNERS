@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, collection, addDoc } from "firebase/firestore";
 import { getInvestorHypeScore } from "@/app/actions/gemini";
 import { getQuote, getChartData, getPriceForDate } from "@/app/actions/fmp";
 import { recalculatePortfolioFromTransactions } from "@/app/actions/portfolio";
@@ -39,6 +39,12 @@ export default function TickerPage() {
     const [chartStats, setChartStats] = useState({ open: "-", high: "-", vol: "-", range: "-" });
     const [hypeData, setHypeData] = useState<{ score: number | null; points: string[] } | null>(null);
     const [isHypeLoading, setIsHypeLoading] = useState(false);
+    const [isSharingPosition, setIsSharingPosition] = useState(false);
+    const [sharePositionSuccess, setSharePositionSuccess] = useState(false);
+
+    // Trade Share Tracking
+    const [recentTradeShareState, setRecentTradeShareState] = useState<"pending" | "shared" | "auto-shared" | "none">("none");
+    const [recentTradeDetails, setRecentTradeDetails] = useState<any>(null);
 
     useEffect(() => {
         if (!tickerSymbol) return;
@@ -266,6 +272,8 @@ export default function TickerPage() {
                 setIsTrading(false);
                 return;
             }
+            const autoShare = userSnap.data().autoShare || false;
+
             const transactionHistory = userSnap.data().transactionHistory || [];
             const timestamp = new Date().toISOString();
             const execPrice = (await getPriceForDate(tickerData.ticker, timestamp)) ?? price;
@@ -294,18 +302,115 @@ export default function TickerPage() {
             await updateDoc(userRef, {
                 transactionHistory: [...transactionHistory, tx],
             });
-            setTradeSuccess(true);
-            setTimeout(() => {
-                setIsTradeModalOpen(false);
-                setTradeSuccess(false);
-                setUserPosition(null);
-                router.push("/portfolio");
-            }, 1500);
+
+            if (autoShare) {
+                // Post to feed
+                const feedRef = collection(db, "global_feed");
+                const actionText = tradeMode === "buy" ? `purchased ${shares.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares of` : `sold ${shares.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares of`;
+                await addDoc(feedRef, {
+                    user: {
+                        name: auth.currentUser.displayName || "Anonymous",
+                        handle: `@${(auth.currentUser.displayName || "user").replace(/\s+/g, '').toLowerCase()}`,
+                        avatar: (auth.currentUser.displayName || "A").substring(0, 2).toUpperCase(),
+                        color: "bg-blue-500",
+                        uid: auth.currentUser.uid
+                    },
+                    action: actionText,
+                    ticker: tickerData.ticker,
+                    timestamp: new Date().toISOString(),
+                    likes: [],
+                    commentsList: [],
+                    isPositive: tradeMode === "buy"
+                });
+                setRecentTradeShareState("auto-shared");
+                setTradeSuccess(true);
+                setTimeout(() => {
+                    closeTradeModalAndRedirect();
+                }, 2000);
+            } else {
+                setRecentTradeShareState("pending");
+                setRecentTradeDetails({ tradeMode, shares, ticker: tickerData.ticker });
+                setTradeSuccess(true);
+            }
+
         } catch (error) {
             console.error(error);
             setTradeError("Failed to execute trade.");
         }
         setIsTrading(false);
+    };
+
+    const closeTradeModalAndRedirect = () => {
+        setIsTradeModalOpen(false);
+        setTradeSuccess(false);
+        setRecentTradeShareState("none");
+        setUserPosition(null);
+        router.push("/portfolio");
+    };
+
+    const handleShareRecentTrade = async () => {
+        if (!auth.currentUser || !recentTradeDetails) return;
+        setRecentTradeShareState("shared");
+        try {
+            const feedRef = collection(db, "global_feed");
+            const actionText = recentTradeDetails.tradeMode === "buy"
+                ? `purchased ${recentTradeDetails.shares.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares of`
+                : `sold ${recentTradeDetails.shares.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares of`;
+
+            await addDoc(feedRef, {
+                user: {
+                    name: auth.currentUser.displayName || "Anonymous",
+                    handle: `@${(auth.currentUser.displayName || "user").replace(/\s+/g, '').toLowerCase()}`,
+                    avatar: (auth.currentUser.displayName || "A").substring(0, 2).toUpperCase(),
+                    color: "bg-blue-500",
+                    uid: auth.currentUser.uid
+                },
+                action: actionText,
+                ticker: recentTradeDetails.ticker,
+                timestamp: new Date().toISOString(),
+                likes: [],
+                commentsList: [],
+                isPositive: recentTradeDetails.tradeMode === "buy"
+            });
+            setTimeout(() => {
+                closeTradeModalAndRedirect();
+            }, 1000);
+        } catch (error) {
+            console.error("Error sharing trade:", error);
+            setRecentTradeShareState("pending");
+        }
+    };
+
+    const handleSharePosition = async () => {
+        if (!auth.currentUser || !tickerData || !chartPosition) return;
+        setIsSharingPosition(true);
+        try {
+            const feedRef = collection(db, "global_feed");
+            const profit = (chartPosition.shares * price - chartPosition.costBasis);
+            const isProfit = profit >= 0;
+            const actionText = `is holding ${chartPosition.shares.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares of`;
+
+            await addDoc(feedRef, {
+                user: {
+                    name: auth.currentUser.displayName || "Anonymous",
+                    handle: `@${(auth.currentUser.displayName || "user").replace(/\s+/g, '').toLowerCase()}`,
+                    avatar: (auth.currentUser.displayName || "A").substring(0, 2).toUpperCase(),
+                    color: "bg-blue-500", // Defaulting to blue for real users right now
+                    uid: auth.currentUser.uid
+                },
+                action: actionText,
+                ticker: tickerData.ticker,
+                timestamp: new Date().toISOString(),
+                likes: [],
+                commentsList: [],
+                isPositive: isProfit
+            });
+            setSharePositionSuccess(true);
+            setTimeout(() => setSharePositionSuccess(false), 3000);
+        } catch (error) {
+            console.error("Error sharing position:", error);
+        }
+        setIsSharingPosition(false);
     };
 
     if (!tickerSymbol) return null;
@@ -445,9 +550,8 @@ export default function TickerPage() {
                         <button
                             key={tf}
                             onClick={() => setActiveTimeframe(tf)}
-                            className={`text-xs font-bold transition-all duration-200 ${
-                                activeTimeframe === tf ? "bg-zinc-800 text-white px-3 py-1.5 rounded-full" : "text-zinc-400 hover:text-white px-3 py-1.5"
-                            }`}
+                            className={`text-xs font-bold transition-all duration-200 ${activeTimeframe === tf ? "bg-zinc-800 text-white px-3 py-1.5 rounded-full" : "text-zinc-400 hover:text-white px-3 py-1.5"
+                                }`}
                         >
                             {tf}
                         </button>
@@ -463,13 +567,14 @@ export default function TickerPage() {
                             setSharesInput("1");
                             setDollarsInput("");
                             setTradeError("");
+                            setRecentTradeShareState("none");
+                            setRecentTradeDetails(null);
                             setIsTradeModalOpen(true);
                         }}
-                        className={`w-full py-4 rounded-full font-bold text-lg transition shadow-lg ${
-                            tickerData.isPositive
-                                ? "bg-[#00c805] hover:bg-[#00e306] text-black shadow-[#00c805]/20"
-                                : "bg-[#ff5000] hover:bg-[#ff6a26] text-white shadow-[#ff5000]/20"
-                        }`}
+                        className={`w-full py-4 rounded-full font-bold text-lg transition shadow-lg ${tickerData.isPositive
+                            ? "bg-[#00c805] hover:bg-[#00e306] text-black shadow-[#00c805]/20"
+                            : "bg-[#ff5000] hover:bg-[#ff6a26] text-white shadow-[#ff5000]/20"
+                            }`}
                     >
                         Trade {tickerData.ticker}
                     </button>
@@ -508,9 +613,8 @@ export default function TickerPage() {
                                             </div>
                                         </div>
                                         <span
-                                            className={`text-sm font-bold mt-4 ${
-                                                hypeData.score && hypeData.score > 80 ? "text-red-400" : hypeData.score && hypeData.score > 60 ? "text-yellow-400" : "text-blue-400"
-                                            }`}
+                                            className={`text-sm font-bold mt-4 ${hypeData.score && hypeData.score > 80 ? "text-red-400" : hypeData.score && hypeData.score > 60 ? "text-yellow-400" : "text-blue-400"
+                                                }`}
                                         >
                                             {hypeData.score && hypeData.score > 80 ? "Extreme / Meme" : hypeData.score && hypeData.score > 60 ? "High Hype" : hypeData.score && hypeData.score > 40 ? "Moderate Hype" : "Low Hype"}
                                         </span>
@@ -532,7 +636,7 @@ export default function TickerPage() {
                 </div>
 
                 {/* Key Statistics */}
-                <div className="mt-8 pb-32">
+                <div className="mt-8">
                     <h2 className="text-xl font-bold mb-4 text-zinc-400">Key Statistics</h2>
                     <div className="grid grid-cols-2 gap-y-4 text-sm bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
                         <div>
@@ -553,6 +657,64 @@ export default function TickerPage() {
                         </div>
                     </div>
                 </div>
+
+                {/* Your Position (when user holds this ticker) */}
+                {chartPosition && chartPosition.shares > 0 && (
+                    <div className="mt-8 pb-32">
+                        <h2 className="text-xl font-bold mb-4 text-zinc-400">Your Position</h2>
+                        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 space-y-4">
+                            <div className="flex justify-between items-center">
+                                <span className="text-zinc-500">Shares</span>
+                                <span className="font-bold text-lg">{chartPosition.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-zinc-500">Avg Cost</span>
+                                <span className="font-bold">${chartPosition.avgCost.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-zinc-500">Cost Basis</span>
+                                <span className="font-bold">${chartPosition.costBasis.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-zinc-500">Market Value</span>
+                                <span className="font-bold">${(chartPosition.shares * price).toFixed(2)}</span>
+                            </div>
+                            <div className="pt-4 border-t border-zinc-800 flex justify-between items-center">
+                                <span className="text-zinc-500">Unrealized P&L</span>
+                                <span className={`font-bold ${(chartPosition.shares * price - chartPosition.costBasis) >= 0 ? "text-[#00c805]" : "text-red-500"}`}>
+                                    {((chartPosition.shares * price - chartPosition.costBasis) >= 0 ? "+" : "")}
+                                    ${(chartPosition.shares * price - chartPosition.costBasis).toFixed(2)}
+                                    {" "}
+                                    (${chartPosition.costBasis > 0 ? ((chartPosition.shares * price - chartPosition.costBasis) / chartPosition.costBasis * 100).toFixed(2) : "0"}%)
+                                </span>
+                            </div>
+
+                            {/* Share Position Button */}
+                            <div className="pt-4 flex justify-end items-center">
+                                {sharePositionSuccess ? (
+                                    <span className="text-[#00c805] text-sm font-bold flex items-center gap-1 animate-in fade-in duration-300">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Shared to Feed
+                                    </span>
+                                ) : (
+                                    <button
+                                        onClick={handleSharePosition}
+                                        disabled={isSharingPosition}
+                                        className="text-xs bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-full font-bold flex items-center gap-2 transition disabled:opacity-50"
+                                    >
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                        </svg>
+                                        {isSharingPosition ? "Sharing..." : "Share to Feed"}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {(!chartPosition || chartPosition.shares <= 0) && <div className="pb-32" />}
             </div>
 
             {/* Trade Modal */}
@@ -566,14 +728,46 @@ export default function TickerPage() {
                             </button>
                         </div>
                         {tradeSuccess ? (
-                            <div className="py-12 flex flex-col items-center justify-center text-center">
+                            <div className="py-8 flex flex-col items-center justify-center text-center">
                                 <div className="w-16 h-16 bg-[#00c805]/20 text-[#00c805] rounded-full flex items-center justify-center mb-4 border-2 border-[#00c805]">
                                     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                                     </svg>
                                 </div>
                                 <h4 className="text-2xl font-bold mb-2">Order Complete</h4>
-                                <p className="text-zinc-400 text-sm">Your {tickerData.ticker} {tradeMode === "buy" ? "purchase" : "sale"} has been executed.</p>
+                                <p className="text-zinc-400 text-sm mb-8">Your {tickerData.ticker} {tradeMode === "buy" ? "purchase" : "sale"} has been executed.</p>
+
+                                {recentTradeShareState === "auto-shared" && (
+                                    <div className="text-sm text-[#00c805] font-bold flex items-center gap-2 bg-[#00c805]/10 px-4 py-2 rounded-full mt-2 animate-in slide-in-from-bottom-2">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                        Automatically shared to feed
+                                    </div>
+                                )}
+
+                                {recentTradeShareState === "shared" && (
+                                    <div className="text-sm text-[#00c805] font-bold flex items-center gap-2 bg-[#00c805]/10 px-4 py-2 rounded-full mt-2 animate-in slide-in-from-bottom-2">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                        Shared to feed!
+                                    </div>
+                                )}
+
+                                {recentTradeShareState === "pending" && (
+                                    <div className="flex flex-col w-full gap-3 mt-4">
+                                        <button
+                                            onClick={handleShareRecentTrade}
+                                            className="w-full py-3 bg-[#00c805] hover:bg-[#00e306] text-black rounded-xl font-bold transition flex items-center justify-center gap-2"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                                            Share Trade to Feed
+                                        </button>
+                                        <button
+                                            onClick={closeTradeModalAndRedirect}
+                                            className="w-full py-3 text-zinc-400 hover:text-white bg-zinc-800 rounded-xl font-bold transition"
+                                        >
+                                            Done
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <>
@@ -593,8 +787,19 @@ export default function TickerPage() {
                                     </button>
                                 </div>
                                 {tradeMode === "sell" && userPosition && (
-                                    <div className="mb-4 p-3 bg-zinc-800/50 rounded-xl text-sm text-zinc-400">
-                                        Shares available: <span className="font-bold text-white">{userPosition.shares}</span>
+                                    <div className="mb-4 flex items-center justify-between gap-3 p-3 bg-zinc-800/50 rounded-xl text-sm text-zinc-400">
+                                        <span>Shares available: <span className="font-bold text-white">{userPosition.shares}</span></span>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setInputMode("shares");
+                                                setSharesInput(userPosition.shares.toString());
+                                                setDollarsInput("");
+                                            }}
+                                            className="text-xs font-bold text-red-400 hover:text-red-300 px-3 py-1 rounded-full border border-red-500/50 hover:border-red-400/50 transition"
+                                        >
+                                            Sell All
+                                        </button>
                                     </div>
                                 )}
                                 <div className="flex justify-between items-center bg-black/50 p-4 rounded-xl mb-4 border border-zinc-800">
@@ -644,7 +849,7 @@ export default function TickerPage() {
                                     )}
                                 </div>
                                 <div className="flex justify-between items-center mb-8 px-2">
-                                    <span className="text-zinc-400 font-medium">{tradeMode === "buy" ? "Estimated Cost" : "Estimated Proceeds"}</span>
+                                    <span className="text-zinc-400 font-medium">{tradeMode === "buy" ? "Estimated Cost" : "Cashout"}</span>
                                     <span className="font-bold text-xl">${dollarsFromInput.toFixed(2)}</span>
                                 </div>
                                 {inputMode === "dollars" && sharesFromInput > 0 && (
@@ -654,11 +859,10 @@ export default function TickerPage() {
                                 <button
                                     onClick={handleTrade}
                                     disabled={isTrading || sharesFromInput <= 0}
-                                    className={`w-full py-4 rounded-2xl font-bold text-lg transition disabled:opacity-50 ${
-                                        tradeMode === "buy"
-                                            ? "bg-[#00c805] hover:bg-[#00e306] text-black"
-                                            : "bg-red-500 hover:bg-red-600 text-white"
-                                    }`}
+                                    className={`w-full py-4 rounded-2xl font-bold text-lg transition disabled:opacity-50 ${tradeMode === "buy"
+                                        ? "bg-[#00c805] hover:bg-[#00e306] text-black"
+                                        : "bg-red-500 hover:bg-red-600 text-white"
+                                        }`}
                                 >
                                     {isTrading ? "Processing..." : `${tradeMode === "buy" ? "Buy" : "Sell"} ${tickerData.ticker}`}
                                 </button>

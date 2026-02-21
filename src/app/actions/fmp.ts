@@ -315,19 +315,19 @@ export async function getEconomicCalendar(): Promise<{ time: string; event: stri
     ];
 }
 
-export async function getBatchQuotes(symbols: string[]) {
+export async function getBatchQuotes(symbols: string[], skipCache?: boolean) {
     try {
         const symbolString = symbols.sort().join(",");
         const cacheKey = `batch_${symbolString}`;
 
-        if (cache[cacheKey] && cache[cacheKey].expires > Date.now()) {
+        if (!skipCache && cache[cacheKey] && cache[cacheKey].expires > Date.now()) {
             return cache[cacheKey].data;
         }
 
         const fetchPromises = symbols.map(async (symbol) => {
             const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`, {
                 headers: { 'User-Agent': 'Mozilla/5.0' },
-                next: { revalidate: 900 }
+                ...(skipCache ? { cache: 'no-store' as RequestCache } : { next: { revalidate: 900 } })
             });
             if (!res.ok) return null;
 
