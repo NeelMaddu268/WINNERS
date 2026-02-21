@@ -620,7 +620,7 @@ export default function TickerPage() {
                             : "bg-[#ff5000] hover:bg-[#ff6a26] text-white shadow-[#ff5000]/20"
                             }`}
                     >
-                        Trade {tickerData.ticker}
+                        {(chartPosition && chartPosition.shares > 0) ? `Buy / Sell ${tickerData.ticker}` : `Trade ${tickerData.ticker}`}
                     </button>
                 </div>
 
