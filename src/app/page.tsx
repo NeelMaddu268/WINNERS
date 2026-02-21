@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect, useRef, ReactNode } from 'react';
+import { getTickerData } from './actions/ticker';
 
 const faqs = [
     { q: 'How do I get started?', a: 'Sign up in minutes, verify your identity, fund your account, and start investing right away.' },
@@ -19,19 +20,19 @@ const floatingSymbols = [
     '$420.69', '+8.2%', '-0.5%', '$1,847', '+3.6%',
 ];
 
-const tickerItems = [
-    { name: 'Bitcoin', price: '62,699 USD', changes: ['+1.23%', '+2.01%'], positive: true },
-    { name: 'Ethereum', price: '3,421 USD', changes: ['+0.87%', '+1.54%'], positive: true },
-    { name: 'Apple', price: '189.84 USD', changes: ['+0.42%', '+1.12%'], positive: true },
-    { name: 'Tesla', price: '248.50 USD', changes: ['-1.87%', '-2.34%'], positive: false },
-    { name: 'Nvidia', price: '875.30 USD', changes: ['+3.21%', '+5.67%'], positive: true },
-    { name: 'Amazon', price: '178.25 USD', changes: ['+0.95%', '+1.88%'], positive: true },
-    { name: 'Microsoft', price: '415.60 USD', changes: ['-0.32%', '-0.15%'], positive: false },
-    { name: 'Google', price: '141.80 USD', changes: ['+1.45%', '+2.30%'], positive: true },
-    { name: 'Solana', price: '142.50 USD', changes: ['+4.56%', '+8.12%'], positive: true },
-    { name: 'Meta', price: '502.30 USD', changes: ['-0.78%', '-1.23%'], positive: false },
-    { name: 'S&P 500', price: '5,234 USD', changes: ['+0.65%', '+1.02%'], positive: true },
-    { name: 'Cardano', price: '0.58 USD', changes: ['+2.34%', '+3.89%'], positive: true },
+const defaultTickerItems = [
+    { name: 'Bitcoin', price: '—', change: '—', positive: true },
+    { name: 'Ethereum', price: '—', change: '—', positive: true },
+    { name: 'Apple', price: '—', change: '—', positive: true },
+    { name: 'Tesla', price: '—', change: '—', positive: true },
+    { name: 'Nvidia', price: '—', change: '—', positive: true },
+    { name: 'Amazon', price: '—', change: '—', positive: true },
+    { name: 'Microsoft', price: '—', change: '—', positive: true },
+    { name: 'Google', price: '—', change: '—', positive: true },
+    { name: 'Solana', price: '—', change: '—', positive: true },
+    { name: 'Meta', price: '—', change: '—', positive: true },
+    { name: 'S&P 500', price: '—', change: '—', positive: true },
+    { name: 'Cardano', price: '—', change: '—', positive: true },
 ];
 
 function AnimateIn({ children, delay = 0, className = '' }: { children: ReactNode; delay?: number; className?: string }) {
@@ -55,9 +56,71 @@ function AnimateIn({ children, delay = 0, className = '' }: { children: ReactNod
     );
 }
 
+function CountUp({ target, suffix = '', prefix = '' }: { target: number; suffix?: string; prefix?: string }) {
+    const ref = useRef<HTMLSpanElement>(null);
+    const [val, setVal] = useState(0);
+    const [started, setStarted] = useState(false);
+    useEffect(() => {
+        const el = ref.current;
+        if (!el) return;
+        const obs = new IntersectionObserver(([entry]) => {
+            if (entry.isIntersecting && !started) { setStarted(true); obs.unobserve(el); }
+        }, { threshold: 0.5 });
+        obs.observe(el);
+        return () => obs.disconnect();
+    }, [started]);
+    useEffect(() => {
+        if (!started) return;
+        const duration = 2000;
+        const start = performance.now();
+        const tick = (now: number) => {
+            const t = Math.min((now - start) / duration, 1);
+            const ease = 1 - Math.pow(1 - t, 3);
+            setVal(Math.round(ease * target));
+            if (t < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    }, [started, target]);
+    return <span ref={ref}>{prefix}{val.toLocaleString()}{suffix}</span>;
+}
+
 export default function Home() {
     const [openFaq, setOpenFaq] = useState<number | null>(null);
+    const [activeStep, setActiveStep] = useState(0);
+    const [cycleWord, setCycleWord] = useState(0);
+    const cycleWords = ['freedom', 'confidence', 'success', 'wealth', 'growth'];
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCycleWord(prev => (prev + 1) % 5);
+        }, 2200);
+        return () => clearInterval(interval);
+    }, []);
     const [particles, setParticles] = useState<any[]>([]);
+    const [tickerItems, setTickerItems] = useState(defaultTickerItems);
+    const glowRef = useRef<HTMLDivElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    useEffect(() => {
+        let animId: number;
+        let mouseX = 0, mouseY = 0, glowX = 0, glowY = 0;
+        const onMove = (e: MouseEvent) => {
+            mouseX = e.clientX; mouseY = e.clientY;
+        };
+        window.addEventListener('mousemove', onMove);
+        const lerp = () => {
+            glowX += (mouseX - glowX) * 0.08;
+            glowY += (mouseY - glowY) * 0.08;
+            if (glowRef.current) {
+                glowRef.current.style.transform = `translate(${glowX - 225}px, ${glowY - 225}px)`;
+            }
+            animId = requestAnimationFrame(lerp);
+        };
+        animId = requestAnimationFrame(lerp);
+        return () => { window.removeEventListener('mousemove', onMove); cancelAnimationFrame(animId); };
+    }, []);
+
+
 
     useEffect(() => {
         setParticles(
@@ -74,8 +137,54 @@ export default function Home() {
         );
     }, []);
 
+    useEffect(() => {
+        getTickerData().then((data) => setTickerItems(data)).catch(() => {});
+    }, []);
+
+    // Particle star field
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        let animId: number;
+        const resize = () => { canvas.width = window.innerWidth; canvas.height = document.documentElement.scrollHeight; };
+        resize();
+        window.addEventListener('resize', resize);
+        const stars = Array.from({ length: 120 }, () => ({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            r: Math.random() * 1.2 + 0.5,
+            dx: (Math.random() - 0.5) * 0.15,
+            dy: -(Math.random() * 0.2 + 0.05),
+            o: Math.random() * 0.2 + 0.08,
+            green: Math.random() > 0.6,
+        }));
+        const draw = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (const s of stars) {
+                s.x += s.dx; s.y += s.dy;
+                if (s.y < 0) s.y = canvas.height;
+                if (s.x < 0) s.x = canvas.width;
+                if (s.x > canvas.width) s.x = 0;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                ctx.fillStyle = s.green ? `rgba(74,222,154,${s.o})` : `rgba(240,237,232,${s.o})`;
+                ctx.fill();
+            }
+            animId = requestAnimationFrame(draw);
+        };
+        animId = requestAnimationFrame(draw);
+        return () => { cancelAnimationFrame(animId); window.removeEventListener('resize', resize); };
+    }, []);
+
     return (
-        <div className="bg-gradient-to-br from-[#0d1a14] via-[#111c18] to-[#0d1f1a] text-[#f0ede8]">
+        <div className="bg-gradient-to-br from-[#0d1a14] via-[#111c18] to-[#0d1f1a] text-[#f0ede8] relative">
+            {/* Particle star field canvas */}
+            <canvas ref={canvasRef} className="fixed inset-0 w-full h-full pointer-events-none z-0" />
+            {/* Cursor glow */}
+            <div ref={glowRef} className="fixed top-0 left-0 w-[450px] h-[450px] pointer-events-none z-0 rounded-full" style={{ background: 'radial-gradient(circle, rgba(74,222,154,0.05) 0%, transparent 70%)', filter: 'blur(40px)' }}></div>
+
             <div className="fixed inset-0 pointer-events-none z-0">
                 <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[#4ade9a]/5 rounded-full blur-3xl"></div>
             </div>
@@ -89,7 +198,7 @@ export default function Home() {
                         </div>
                         <span className="font-semibold text-lg tracking-tight">CashMere</span>
                     </div>
-                    <Link href="/login" className="px-6 py-2 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-full text-sm font-semibold transition">Continue</Link>
+                    <Link href="/login" className="px-6 py-2 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-full text-sm font-semibold transition animate-btnPulse">Continue</Link>
                 </div>
             </nav>
 
@@ -128,7 +237,7 @@ export default function Home() {
                         </div>
                     </AnimateIn>
                     <AnimateIn delay={0.15}>
-                        <h1 className="text-7xl md:text-8xl lg:text-9xl font-bold mb-6 leading-[0.9] tracking-tight text-white" style={{ fontFamily: 'Playfair Display, serif' }}>
+                        <h1 className="text-7xl md:text-8xl lg:text-9xl font-black mb-6 leading-[0.9] tracking-tight text-white" style={{ textShadow: '0 0 40px #4ade9a, 0 0 80px rgba(74,222,154,0.35), 0 0 120px rgba(74,222,154,0.15)' }}>
                             Invest with<br />Confidence
                         </h1>
                     </AnimateIn>
@@ -139,9 +248,9 @@ export default function Home() {
                     </AnimateIn>
                     <AnimateIn delay={0.45}>
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                            <Link href="/login" className="px-8 py-3.5 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-full font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-[#4ade9a]/20">Get Started</Link>
-                            <button className="px-8 py-3.5 border border-[#2a3d30] hover:border-[#4ade9a] rounded-full font-semibold transition-all duration-300 flex items-center gap-2 group">
-                                Explore <span className="group-hover:translate-x-1 transition">&rarr;</span>
+                            <Link href="/login" className="px-8 py-3.5 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-full font-semibold transition-all duration-300 transform hover:scale-105 animate-btnPulse">Get Started</Link>
+                            <button onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })} className="w-12 h-12 border border-[#2a3d30] hover:border-[#4ade9a] rounded-full font-semibold transition-all duration-300 flex items-center justify-center group hover:bg-[#4ade9a]/10">
+                                <span className="text-lg group-hover:translate-y-1 transition">&darr;</span>
                             </button>
                         </div>
                     </AnimateIn>
@@ -173,13 +282,24 @@ export default function Home() {
                         <div key={i} className="flex items-center gap-3 mx-6 flex-shrink-0">
                             <span className="text-xs font-semibold text-[#f0ede8]">{item.name}</span>
                             <span className="text-xs text-[#a8a8a0]">{item.price}</span>
-                            {item.changes.map((c, j) => (
-                                <span key={j} className={`text-xs font-mono ${item.positive ? 'text-[#4ade9a]' : 'text-[#b45555]'}`}>{c}</span>
-                            ))}
+                            <span className={`text-xs font-mono ${item.positive ? 'text-[#4ade9a]' : 'text-[#b45555]'}`}>{item.change}</span>
                             <span className="text-[#2a3d30] mx-2">|</span>
                         </div>
                     ))}
                 </div>
+            </div>
+
+            {/* Animated fluid wave divider */}
+            <div className="relative w-full h-24 overflow-hidden" style={{ background: 'linear-gradient(to bottom, #0a1410, #0a1410)' }}>
+                <svg className="absolute bottom-0 w-[200%] h-full animate-wave1" viewBox="0 0 1440 100" preserveAspectRatio="none">
+                    <path d="M0,60 C360,20 720,90 1080,40 C1260,20 1380,50 1440,60 L1440,100 L0,100Z" fill="rgba(74,222,154,0.05)" />
+                </svg>
+                <svg className="absolute bottom-0 w-[200%] h-full animate-wave2" viewBox="0 0 1440 100" preserveAspectRatio="none">
+                    <path d="M0,70 C240,30 480,80 720,50 C960,20 1200,70 1440,40 L1440,100 L0,100Z" fill="rgba(74,222,154,0.08)" />
+                </svg>
+                <svg className="absolute bottom-0 w-[200%] h-full animate-wave3" viewBox="0 0 1440 100" preserveAspectRatio="none">
+                    <path d="M0,50 C180,80 540,20 900,60 C1080,80 1260,30 1440,50 L1440,100 L0,100Z" fill="rgba(74,222,154,0.12)" />
+                </svg>
             </div>
 
             {/* Global Stats Section */}
@@ -187,16 +307,16 @@ export default function Home() {
                 <div className="max-w-5xl mx-auto">
                     <AnimateIn className="text-center mb-16">
                         <h2 className="text-4xl md:text-5xl font-serif font-bold mb-4" style={{ fontFamily: 'Playfair Display, serif' }}>
-                            Investors from more than 150 countries<br />trust CashMere
+                            The numbers behind<br />CashMere
                         </h2>
-                        <p className="text-lg text-[#a8a8a0]">Join a global community building wealth together</p>
+                        <p className="text-lg text-[#a8a8a0]">Built for investors who want more from their platform</p>
                     </AnimateIn>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {[
-                            { value: '$500B', suffix: '+', label: 'Assets Under Management' },
-                            { value: '5M', suffix: '+', label: 'Active Investors' },
-                            { value: '150', suffix: '+', label: 'Countries Worldwide' },
-                            { value: '24/7', suffix: '', label: 'Dedicated Support' },
+                            { value: '12', suffix: '+', label: 'Live Market Indices Tracked' },
+                            { value: '10s', suffix: '', label: 'Real-Time Price Refresh Rate' },
+                            { value: '50', suffix: '+', label: 'Stocks, Crypto & ETFs Available' },
+                            { value: '24/7', suffix: '', label: 'AI Portfolio Analysis' },
                         ].map((s, i) => (
                             <AnimateIn key={i} delay={i * 0.12}>
                                 <div className="relative p-10 border border-[#2a3d30] rounded-xl bg-[#0d1a14]/50 group hover:border-[#4ade9a]/30 transition-all duration-300">
@@ -223,25 +343,124 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* 2. Features Grid */}
-            <section className="relative py-24 px-6" style={{ background: 'linear-gradient(to bottom, #0d1a14, #111c18)' }}>
-                <div className="max-w-7xl mx-auto">
-                    <AnimateIn className="text-center mb-16">
-                        <h2 className="text-5xl font-serif font-bold mb-4" style={{ fontFamily: 'Playfair Display, serif' }}>Trade Everything</h2>
-                        <p className="text-lg text-[#a8a8a0] max-w-2xl mx-auto">Access all major asset classes from one unified platform</p>
+            {/* What is CashMere — Two Column */}
+            <section className="relative py-28 px-6" style={{ background: 'linear-gradient(to bottom, #0d1a14, #0f1d17)' }}>
+                <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+                    {/* Left — Large heading with geometric wireframe */}
+                    <AnimateIn>
+                        <div className="relative flex items-center justify-center min-h-[400px]">
+                            {/* Animated wireframe SVG */}
+                            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                {/* Connecting lines */}
+                                <line x1="80" y1="80" x2="200" y2="50" stroke="#4ade9a" strokeOpacity="0.15" strokeWidth="1" className="animate-pulse" />
+                                <line x1="200" y1="50" x2="320" y2="100" stroke="#4ade9a" strokeOpacity="0.12" strokeWidth="1" className="animate-pulse" />
+                                <line x1="320" y1="100" x2="350" y2="220" stroke="#4ade9a" strokeOpacity="0.15" strokeWidth="1" className="animate-pulse" />
+                                <line x1="350" y1="220" x2="300" y2="330" stroke="#4ade9a" strokeOpacity="0.1" strokeWidth="1" className="animate-pulse" />
+                                <line x1="300" y1="330" x2="180" y2="360" stroke="#4ade9a" strokeOpacity="0.15" strokeWidth="1" className="animate-pulse" />
+                                <line x1="180" y1="360" x2="60" y2="300" stroke="#4ade9a" strokeOpacity="0.12" strokeWidth="1" className="animate-pulse" />
+                                <line x1="60" y1="300" x2="80" y2="80" stroke="#4ade9a" strokeOpacity="0.1" strokeWidth="1" className="animate-pulse" />
+                                <line x1="200" y1="50" x2="200" y2="200" stroke="#4ade9a" strokeOpacity="0.08" strokeWidth="1" />
+                                <line x1="80" y1="80" x2="200" y2="200" stroke="#4ade9a" strokeOpacity="0.08" strokeWidth="1" />
+                                <line x1="320" y1="100" x2="200" y2="200" stroke="#4ade9a" strokeOpacity="0.08" strokeWidth="1" />
+                                <line x1="350" y1="220" x2="200" y2="200" stroke="#4ade9a" strokeOpacity="0.08" strokeWidth="1" />
+                                <line x1="60" y1="300" x2="200" y2="200" stroke="#4ade9a" strokeOpacity="0.08" strokeWidth="1" />
+                                <line x1="180" y1="360" x2="200" y2="200" stroke="#4ade9a" strokeOpacity="0.08" strokeWidth="1" />
+                                {/* Glowing nodes */}
+                                {[[200,200],[80,80],[200,50],[320,100],[350,220],[300,330],[180,360],[60,300]].map(([cx,cy], i) => (
+                                    <g key={i}>
+                                        <circle cx={cx} cy={cy} r="6" fill="#4ade9a" fillOpacity="0.08" className="animate-pulse" />
+                                        <circle cx={cx} cy={cy} r="3" fill="#4ade9a" fillOpacity={i === 0 ? 0.6 : 0.25} className="animate-pulse" style={{ animationDelay: `${i * 0.3}s` }} />
+                                    </g>
+                                ))}
+                            </svg>
+                            {/* Heading overlay */}
+                            <div className="relative z-10 text-center md:text-left">
+                                <h2 className="text-6xl md:text-7xl font-bold leading-[0.95] text-white" style={{ fontFamily: 'Playfair Display, serif' }}>
+                                    Our Capital<br /><span className="text-[#4ade9a]">Your Success</span>
+                                </h2>
+                            </div>
+                        </div>
                     </AnimateIn>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+                    {/* Right — Description */}
+                    <AnimateIn delay={0.2}>
+                        <div>
+                            <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#1a2a22]/80 border border-[#2a3d30] rounded-full mb-6">
+                                <div className="w-2 h-2 bg-[#4ade9a] rounded-full animate-pulse"></div>
+                                <span className="text-xs text-[#a8a8a0] font-medium uppercase tracking-wide">What is CashMere?</span>
+                            </div>
+                            <h3 className="text-2xl md:text-3xl font-bold mb-6 text-white leading-snug">
+                                Trade on any market with institutional-grade capital
+                            </h3>
+                            <div className="space-y-4 text-[#a8a8a0] leading-relaxed">
+                                <p>
+                                    CashMere gives you access to the same tools and capital that hedge funds and institutional traders use — without the barriers. Whether you trade stocks, crypto, or options, our platform levels the playing field.
+                                </p>
+                                <p>
+                                    With AI-driven insights, real-time analytics, and zero-commission trading, you can make smarter decisions faster. Our technology processes millions of data points so you don't have to.
+                                </p>
+                                <p>
+                                    Join a global community of investors who trust CashMere to grow their wealth with confidence, transparency, and cutting-edge infrastructure.
+                                </p>
+                            </div>
+                        </div>
+                    </AnimateIn>
+                </div>
+            </section>
+
+            {/* 2. Why Choose CashMere */}
+            <section className="relative py-28 px-6 overflow-hidden" style={{ background: 'linear-gradient(to bottom, #0d1a14, #111c18)' }}>
+                {/* Cinematic watermark */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+                    <span className="text-[180px] md:text-[240px] font-black text-white/[0.03] leading-none tracking-tighter">TRADE</span>
+                </div>
+                <div className="max-w-6xl mx-auto">
+                    <AnimateIn className="text-center mb-16">
+                        <h2 className="text-5xl md:text-6xl font-serif font-bold mb-4" style={{ fontFamily: 'Playfair Display, serif' }}>Why choose CashMere?</h2>
+                        <p className="text-lg text-[#a8a8a0] max-w-2xl mx-auto">Everything you need to trade smarter, faster, and with confidence</p>
+                    </AnimateIn>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {[
-                            { icon: '📈', title: 'Stocks & ETFs', desc: 'Zero commission trading with real-time market data.' },
-                            { icon: '₿', title: 'Cryptocurrency', desc: 'Buy, sell, and hold crypto 24/7 securely.' },
-                            { icon: '⚡', title: 'Options Trading', desc: 'Advanced strategies with real-time Greeks.' },
-                            { icon: '💰', title: 'Margin Trading', desc: 'Competitive rates starting at 3.95%.' },
-                        ].map((f, i) => (
-                            <AnimateIn key={i} delay={i * 0.1}>
-                                <div className="group p-8 bg-[#1a2a22]/50 border border-[#2a3d30] rounded-xl hover:border-[#4ade9a]/50 transition-all duration-300 hover:bg-[#1a2a22]/80 hover:-translate-y-2 hover:shadow-lg hover:shadow-[#4ade9a]/10">
-                                    <div className="text-4xl mb-4">{f.icon}</div>
-                                    <h3 className="text-xl font-semibold mb-3">{f.title}</h3>
-                                    <p className="text-[#a8a8a0] text-sm leading-relaxed">{f.desc}</p>
+                            { icon: '📊', title: 'Live Portfolio Tracking', desc: 'Monitor all your positions with real-time prices from Yahoo Finance. See your total value, unrealized P&L, average cost basis, and available cash — updated every 10 seconds so you never miss a move.' },
+                            { icon: '🤖', title: 'AI Portfolio Insights', desc: 'Get an AI-generated Portfolio Pulse with scores for growth potential, overvaluation risk, and political climate impact. Plus personalized lookout alerts when opportunities or risks emerge in your holdings.' },
+                            { icon: '👥', title: 'Social Trading Feed', desc: 'See what your friends are buying and selling in real time. Like, comment, and follow other investors. View their top holdings and track their moves — investing is better when you do it together.' },
+                            { icon: '🔍', title: 'Full Market Intelligence', desc: 'Live indices, top gainers and losers, volume leaders, sector heatmaps, Fear & Greed index, earnings calendars, and economic events — all in one place with a powerful ticker search.' },
+                        ].map((card, i) => (
+                            <AnimateIn key={i} delay={i * 0.12}>
+                                <div className="relative group p-10 bg-[#1a2a22] border border-[#2a3d30] rounded-xl hover:border-[#4ade9a] transition-all duration-400 hover:shadow-lg hover:shadow-[#4ade9a]/10 overflow-hidden">
+                                    {/* Animated border glow on hover */}
+                                    <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: 'conic-gradient(from 0deg, transparent, #4ade9a, transparent, #4ade9a, transparent)', padding: '1px', mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', maskComposite: 'exclude', WebkitMaskComposite: 'xor', animation: 'none' }}></div>
+                                    {/* Top-left corner bracket */}
+                                    <div className="absolute top-0 left-0 w-7 h-7">
+                                        <div className="absolute top-0 left-0 w-full h-[2px] bg-[#4ade9a]/30 group-hover:bg-[#4ade9a]/70 transition-all duration-400"></div>
+                                        <div className="absolute top-0 left-0 h-full w-[2px] bg-[#4ade9a]/30 group-hover:bg-[#4ade9a]/70 transition-all duration-400"></div>
+                                    </div>
+                                    {/* Top-right corner bracket */}
+                                    <div className="absolute top-0 right-0 w-7 h-7">
+                                        <div className="absolute top-0 right-0 w-full h-[2px] bg-[#4ade9a]/30 group-hover:bg-[#4ade9a]/70 transition-all duration-400"></div>
+                                        <div className="absolute top-0 right-0 h-full w-[2px] bg-[#4ade9a]/30 group-hover:bg-[#4ade9a]/70 transition-all duration-400"></div>
+                                    </div>
+                                    {/* Bottom-left corner bracket */}
+                                    <div className="absolute bottom-0 left-0 w-7 h-7">
+                                        <div className="absolute bottom-0 left-0 w-full h-[2px] bg-[#4ade9a]/30 group-hover:bg-[#4ade9a]/70 transition-all duration-400"></div>
+                                        <div className="absolute bottom-0 left-0 h-full w-[2px] bg-[#4ade9a]/30 group-hover:bg-[#4ade9a]/70 transition-all duration-400"></div>
+                                    </div>
+                                    {/* Bottom-right corner bracket */}
+                                    <div className="absolute bottom-0 right-0 w-7 h-7">
+                                        <div className="absolute bottom-0 right-0 w-full h-[2px] bg-[#4ade9a]/30 group-hover:bg-[#4ade9a]/70 transition-all duration-400"></div>
+                                        <div className="absolute bottom-0 right-0 h-full w-[2px] bg-[#4ade9a]/30 group-hover:bg-[#4ade9a]/70 transition-all duration-400"></div>
+                                    </div>
+
+                                    {/* Glowing icon */}
+                                    <div className="relative w-16 h-16 mb-6 flex items-center justify-center">
+                                        <div className="absolute inset-0 bg-[#4ade9a]/10 rounded-full blur-xl group-hover:bg-[#4ade9a]/20 transition-all duration-400"></div>
+                                        <div className="relative w-14 h-14 bg-[#4ade9a]/10 border border-[#4ade9a]/20 rounded-full flex items-center justify-center text-2xl group-hover:border-[#4ade9a]/40 transition-all duration-400">
+                                            {card.icon}
+                                        </div>
+                                    </div>
+
+                                    <h3 className="text-xl font-bold mb-3 text-white">{card.title}</h3>
+                                    <p className="text-[#a8a8a0] text-sm leading-relaxed">{card.desc}</p>
                                 </div>
                             </AnimateIn>
                         ))}
@@ -267,82 +486,356 @@ export default function Home() {
                         </div>
                     </AnimateIn>
                     <AnimateIn delay={0.2}>
-                        <div className="bg-[#1a2a22] border border-[#2a3d30] rounded-xl p-12 flex items-center justify-center min-h-[300px] hover:border-[#4ade9a]/30 transition-all duration-500">
-                            <div className="text-center">
-                                <div className="text-7xl mb-4 animate-bounce">🤖</div>
-                                <p className="text-[#a8a8a0]">AI Assistant Preview</p>
+                        <div className="bg-[#1a2a22] border border-[#2a3d30] rounded-xl overflow-hidden hover:border-[#4ade9a]/30 transition-all duration-500">
+                            {/* Window chrome */}
+                            <div className="flex items-center gap-2 px-4 py-2.5 bg-[#0d1a14] border-b border-[#2a3d30]">
+                                <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></div>
+                                <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]"></div>
+                                <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]"></div>
+                                <span className="ml-2 text-[10px] text-[#a8a8a0]">CashMere — AI Insights</span>
+                            </div>
+                            <div className="p-5">
+                                {/* AI Summary Card */}
+                                <div className="bg-[#0d1a14] border border-[#2a3d30]/50 rounded-lg p-4 mb-4">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <svg className="w-4 h-4 text-[#4ade9a]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                        <span className="text-[10px] text-[#4ade9a] font-bold uppercase tracking-wider">AI Portfolio Pulse</span>
+                                    </div>
+                                    <p className="text-[11px] text-[#a8a8a0] leading-relaxed">Your portfolio is heavily consolidated in tech, showing strong momentum from AI-driven rallies. Diversification score is low — consider index funds to hedge.</p>
+                                </div>
+                                {/* Score badges */}
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between p-2.5 bg-[#0d1a14] border border-[#2a3d30]/40 rounded-lg">
+                                        <span className="text-[10px] text-[#a8a8a0]">Growth Potential</span>
+                                        <span className="text-[10px] font-bold text-[#4ade9a] bg-[#4ade9a]/10 px-2 py-0.5 rounded-full border border-[#4ade9a]/20">95/100</span>
+                                    </div>
+                                    <div className="flex items-center justify-between p-2.5 bg-[#0d1a14] border border-[#2a3d30]/40 rounded-lg">
+                                        <span className="text-[10px] text-[#a8a8a0]">Overvaluation Risk</span>
+                                        <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20">82/100</span>
+                                    </div>
+                                    <div className="flex items-center justify-between p-2.5 bg-[#0d1a14] border border-[#2a3d30]/40 rounded-lg">
+                                        <span className="text-[10px] text-[#a8a8a0]">Political Climate</span>
+                                        <span className="text-[10px] font-bold text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded-full border border-yellow-500/20">50/100</span>
+                                    </div>
+                                </div>
+                                {/* Lookout */}
+                                <div className="mt-4 pt-3 border-t border-[#2a3d30]/50">
+                                    <div className="text-[10px] text-[#a8a8a0] font-bold uppercase tracking-wider mb-2">Lookout 👀</div>
+                                    <div className="space-y-1.5 text-[11px]">
+                                        <div className="flex gap-2"><span className="text-[#4ade9a]">—</span><span className="text-[#a8a8a0]"><span className="text-white font-medium">MRST</span> P/E ratio dropped, <span className="text-[#4ade9a]">look into buying in</span></span></div>
+                                        <div className="flex gap-2"><span className="text-[#a8a8a0]">—</span><span className="text-[#a8a8a0]"><span className="text-white font-medium">Nvidia</span> teases product reveal</span></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </AnimateIn>
                 </div>
             </section>
 
-            {/* 4. Premium Benefits */}
+            {/* 4. Live Markets Preview */}
             <section className="relative py-24 px-6" style={{ background: 'linear-gradient(to bottom, #111c18, #0d1a14)' }}>
                 <div className="max-w-7xl mx-auto">
                     <AnimateIn className="text-center mb-16">
-                        <h2 className="text-5xl font-serif font-bold mb-4" style={{ fontFamily: 'Playfair Display, serif' }}>Premium Benefits</h2>
-                        <p className="text-lg text-[#a8a8a0]">Unlock exclusive perks with CashMere</p>
+                        <h2 className="text-5xl font-serif font-bold mb-4" style={{ fontFamily: 'Playfair Display, serif' }}>Real-Time Market Data</h2>
+                        <p className="text-lg text-[#a8a8a0]">Everything you need to make informed decisions, at a glance</p>
                     </AnimateIn>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {[
-                            { value: '3.35%', label: 'APY', desc: 'High-yield cash sweep on uninvested funds' },
-                            { value: '$50K', label: 'Instant Deposits', desc: 'Get instant access to deposited funds' },
-                            { value: '3.95%', label: 'Margin Rate', desc: 'Industry-leading margin interest rates' },
-                        ].map((b, i) => (
-                            <AnimateIn key={i} delay={i * 0.15}>
-                                <div className="text-center p-8 bg-[#1a2a22]/50 border border-[#2a3d30] rounded-xl hover:border-[#4ade9a]/30 transition-all duration-300 hover:-translate-y-1">
-                                    <div className="text-4xl font-bold text-[#4ade9a] mb-2">{b.value}</div>
-                                    <div className="text-lg font-semibold mb-2">{b.label}</div>
-                                    <p className="text-[#a8a8a0] text-sm">{b.desc}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+                        {/* Mini Markets Window */}
+                        <AnimateIn>
+                            <div className="bg-[#111c18] border border-[#2a3d30] rounded-xl overflow-hidden hover:border-[#4ade9a]/30 transition-all duration-500">
+                                <div className="flex items-center gap-2 px-4 py-2.5 bg-[#0d1a14] border-b border-[#2a3d30]">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></div>
+                                    <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]"></div>
+                                    <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]"></div>
+                                    <span className="ml-2 text-[10px] text-[#a8a8a0]">Markets — Indices</span>
                                 </div>
-                            </AnimateIn>
-                        ))}
+                                <div className="p-4">
+                                    <div className="space-y-2 mb-4">
+                                        {[
+                                            { label: 'S&P 500', val: '5,234.18', pct: '+0.81%', pos: true },
+                                            { label: 'Nasdaq', val: '16,742.39', pct: '+1.24%', pos: true },
+                                            { label: 'Dow Jones', val: '39,512.84', pct: '-0.12%', pos: false },
+                                        ].map((idx, i) => (
+                                            <div key={i} className="flex items-center justify-between p-3 bg-[#0d1a14] border border-[#2a3d30]/50 rounded-lg">
+                                                <span className="text-xs font-bold text-white">{idx.label}</span>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-xs text-white">{idx.val}</span>
+                                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${idx.pos ? 'text-[#4ade9a] bg-[#4ade9a]/10' : 'text-red-400 bg-red-500/10'}`}>{idx.pct}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {/* Mini Fear & Greed */}
+                                    <div className="bg-[#0d1a14] border border-[#2a3d30]/50 rounded-lg p-3">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="text-[9px] text-[#a8a8a0] uppercase tracking-wider font-bold">Fear & Greed</span>
+                                            <span className="text-[10px] font-bold text-[#4ade9a]">Greed</span>
+                                        </div>
+                                        <div className="w-full h-2 rounded-full bg-gradient-to-r from-red-500 via-yellow-400 to-[#4ade9a]">
+                                            <div className="relative">
+                                                <div className="absolute w-3 h-3 rounded-full bg-white border-2 border-[#4ade9a] shadow-lg" style={{ left: '69%', top: '-6.5px' }}></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </AnimateIn>
+                        {/* Mini Sector Heatmap */}
+                        <AnimateIn delay={0.15}>
+                            <div className="bg-[#111c18] border border-[#2a3d30] rounded-xl overflow-hidden hover:border-[#4ade9a]/30 transition-all duration-500">
+                                <div className="flex items-center gap-2 px-4 py-2.5 bg-[#0d1a14] border-b border-[#2a3d30]">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></div>
+                                    <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]"></div>
+                                    <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]"></div>
+                                    <span className="ml-2 text-[10px] text-[#a8a8a0]">Markets — Sectors & Watchlist</span>
+                                </div>
+                                <div className="p-4">
+                                    <div className="text-[9px] text-[#a8a8a0] uppercase tracking-wider font-bold mb-2">Sector Performance</div>
+                                    <div className="grid grid-cols-3 gap-1.5 mb-4">
+                                        {[
+                                            { name: 'Tech', pct: '+1.82%', pos: true },
+                                            { name: 'Health', pct: '+0.45%', pos: true },
+                                            { name: 'Finance', pct: '-0.32%', pos: false },
+                                            { name: 'Energy', pct: '+2.14%', pos: true },
+                                            { name: 'Consumer', pct: '-0.87%', pos: false },
+                                            { name: 'Industrial', pct: '+0.21%', pos: true },
+                                        ].map((s, i) => (
+                                            <div key={i} className={`flex flex-col items-center justify-center rounded-lg border p-2 ${s.pos ? 'bg-[#4ade9a]/10 border-[#4ade9a]/20' : 'bg-red-500/10 border-red-500/20'}`}>
+                                                <span className="text-[10px] font-bold text-white">{s.name}</span>
+                                                <span className={`text-[11px] font-bold ${s.pos ? 'text-[#4ade9a]' : 'text-red-400'}`}>{s.pct}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="text-[9px] text-[#a8a8a0] uppercase tracking-wider font-bold mb-2">Quick Watch</div>
+                                    <div className="flex gap-1.5 flex-wrap">
+                                        {[
+                                            { sym: 'NVDA', pct: '+1.02%', pos: true },
+                                            { sym: 'AAPL', pct: '-0.26%', pos: false },
+                                            { sym: 'TSLA', pct: '-2.34%', pos: false },
+                                            { sym: 'MSFT', pct: '+0.77%', pos: true },
+                                            { sym: 'META', pct: '+1.45%', pos: true },
+                                        ].map((w, i) => (
+                                            <div key={i} className="flex flex-col items-center bg-[#0d1a14] border border-[#2a3d30] rounded-lg px-3 py-2">
+                                                <span className="text-[10px] font-bold text-white">{w.sym}</span>
+                                                <span className={`text-[10px] font-bold ${w.pos ? 'text-[#4ade9a]' : 'text-red-400'}`}>{w.pct}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </AnimateIn>
                     </div>
                 </div>
             </section>
 
-            {/* 5. How to Get Started */}
-            <section className="relative py-24 px-6" style={{ background: '#0f1d17' }}>
-                <div className="max-w-5xl mx-auto">
-                    <AnimateIn className="text-center mb-16">
-                        <h2 className="text-5xl font-serif font-bold mb-4" style={{ fontFamily: 'Playfair Display, serif' }}>How to Get Started</h2>
-                        <p className="text-lg text-[#a8a8a0]">Start investing in 4 simple steps</p>
+            {/* 5. How Does It Work */}
+            <section className="relative py-24 px-6 overflow-hidden" style={{ background: '#0f1d17' }}>
+                {/* Flowing green silk blobs */}
+                <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                    <div className="absolute w-[500px] h-[500px] bg-[#4ade9a]/10 rounded-full blur-3xl animate-blob1" style={{ top: '10%', left: '-10%' }}></div>
+                    <div className="absolute w-[400px] h-[400px] bg-[#4ade9a]/8 rounded-full blur-3xl animate-blob2" style={{ top: '50%', right: '-5%' }}></div>
+                    <div className="absolute w-[600px] h-[600px] bg-[#4ade9a]/6 rounded-full blur-3xl animate-blob3" style={{ bottom: '-15%', left: '30%' }}></div>
+                </div>
+                <div className="max-w-5xl mx-auto relative z-10">
+                    <AnimateIn className="text-center mb-12">
+                        <h2 className="text-5xl font-serif font-bold mb-4" style={{ fontFamily: 'Playfair Display, serif' }}>How does it work?</h2>
+                        <p className="text-lg text-[#a8a8a0]">Get started in three simple steps</p>
                     </AnimateIn>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        {[
-                            { step: '01', title: 'Sign Up', desc: 'Create your free account in minutes' },
-                            { step: '02', title: 'Verify', desc: 'Quick identity verification' },
-                            { step: '03', title: 'Fund', desc: 'Deposit funds instantly' },
-                            { step: '04', title: 'Invest', desc: 'Start building your portfolio' },
-                        ].map((s, i) => (
-                            <AnimateIn key={i} delay={i * 0.12}>
-                                <div className="text-center p-6 group">
-                                    <div className="text-3xl font-bold text-[#4ade9a] mb-3 group-hover:scale-110 transition-transform duration-300">{s.step}</div>
-                                    <h3 className="text-lg font-semibold mb-2">{s.title}</h3>
-                                    <p className="text-[#a8a8a0] text-sm">{s.desc}</p>
+
+                    {/* Panel area */}
+                    <AnimateIn delay={0.15}>
+                        <div className="relative bg-[#0d1a14] border border-[#2a3d30] rounded-2xl p-6 md:p-8 min-h-[400px] flex items-center justify-center mb-12 overflow-hidden">
+                            {/* Subtle corner glow */}
+                            <div className="absolute top-0 left-0 w-32 h-32 bg-[#4ade9a]/5 rounded-full blur-3xl"></div>
+                            <div className="absolute bottom-0 right-0 w-32 h-32 bg-[#4ade9a]/5 rounded-full blur-3xl"></div>
+
+                            {activeStep === 0 && (
+                                <div className="w-full" style={{ animation: 'fadeInUp 0.4s ease' }}>
+                                    {/* Mini Portfolio Replica */}
+                                    <div className="bg-[#111c18] border border-[#2a3d30] rounded-xl overflow-hidden max-w-lg mx-auto">
+                                        <div className="flex items-center gap-2 px-4 py-2.5 bg-[#0d1a14] border-b border-[#2a3d30]">
+                                            <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></div>
+                                            <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]"></div>
+                                            <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]"></div>
+                                            <span className="ml-2 text-[10px] text-[#a8a8a0]">CashMere — Portfolio</span>
+                                        </div>
+                                        <div className="p-5">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div>
+                                                    <div className="text-[10px] text-[#a8a8a0] uppercase tracking-wider font-bold">Total Portfolio Value</div>
+                                                    <div className="text-2xl font-bold text-white mt-1">$24,847.32</div>
+                                                </div>
+                                                <div className="bg-[#1a2a22] px-3 py-2 rounded-lg border border-[#2a3d30]">
+                                                    <div className="text-[9px] text-[#a8a8a0] uppercase tracking-wider">Cash</div>
+                                                    <div className="text-sm font-bold text-[#4ade9a]">$4,847.32</div>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                {[
+                                                    { ticker: 'NVDA', name: 'Nvidia Corp', shares: '12', price: '$892.40', pnl: '+$1,247.80', pnlPct: '+13.2%', pos: true },
+                                                    { ticker: 'AAPL', name: 'Apple Inc', shares: '25', price: '$189.84', pnl: '+$342.50', pnlPct: '+7.5%', pos: true },
+                                                    { ticker: 'TSLA', name: 'Tesla Inc', shares: '8', price: '$248.50', pnl: '-$156.00', pnlPct: '-7.3%', pos: false },
+                                                ].map((row, i) => (
+                                                    <div key={i} className="flex items-center justify-between py-2 border-b border-[#2a3d30]/30 last:border-0">
+                                                        <div>
+                                                            <div className="text-xs font-bold text-white">{row.ticker}</div>
+                                                            <div className="text-[10px] text-[#a8a8a0]">{row.name}</div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <div className="text-xs font-medium text-white">{row.price}</div>
+                                                            <div className={`text-[10px] font-bold ${row.pos ? 'text-[#4ade9a]' : 'text-red-400'}`}>{row.pnl} ({row.pnlPct})</div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                            </AnimateIn>
-                        ))}
-                    </div>
+                            )}
+                            {activeStep === 1 && (
+                                <div className="w-full" style={{ animation: 'fadeInUp 0.4s ease' }}>
+                                    {/* Mini Markets Replica */}
+                                    <div className="bg-[#111c18] border border-[#2a3d30] rounded-xl overflow-hidden max-w-lg mx-auto">
+                                        <div className="flex items-center gap-2 px-4 py-2.5 bg-[#0d1a14] border-b border-[#2a3d30]">
+                                            <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></div>
+                                            <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]"></div>
+                                            <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]"></div>
+                                            <span className="ml-2 text-[10px] text-[#a8a8a0]">CashMere — Markets</span>
+                                        </div>
+                                        <div className="p-5">
+                                            <div className="text-[9px] text-[#a8a8a0] uppercase tracking-wider font-bold mb-2">Market Overview</div>
+                                            <div className="flex gap-2 mb-4">
+                                                {[
+                                                    { label: 'S&P 500', val: '5,234.18', pct: '+0.81%', pos: true },
+                                                    { label: 'Nasdaq', val: '16,742.39', pct: '+1.24%', pos: true },
+                                                    { label: 'Dow', val: '39,512.84', pct: '-0.12%', pos: false },
+                                                ].map((idx, i) => (
+                                                    <div key={i} className="flex-1 bg-[#0d1a14] border border-[#2a3d30] rounded-lg p-2.5">
+                                                        <div className="text-[9px] text-[#a8a8a0] font-bold uppercase">{idx.label}</div>
+                                                        <div className="text-xs font-bold text-white mt-0.5">{idx.val}</div>
+                                                        <div className={`text-[10px] font-bold ${idx.pos ? 'text-[#4ade9a]' : 'text-red-400'}`}>{idx.pct}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="text-[9px] text-[#a8a8a0] uppercase tracking-wider font-bold mb-2">Top Gainers</div>
+                                            <div className="space-y-1.5">
+                                                {[
+                                                    { sym: 'SMCI', name: 'Super Micro', price: '$892.40', pct: '+12.4%' },
+                                                    { sym: 'MSTR', name: 'MicroStrategy', price: '$1,847.20', pct: '+8.7%' },
+                                                    { sym: 'PLTR', name: 'Palantir', price: '$24.80', pct: '+6.2%' },
+                                                ].map((row, i) => (
+                                                    <div key={i} className="flex items-center justify-between py-1.5 border-b border-[#2a3d30]/30 last:border-0">
+                                                        <div>
+                                                            <span className="text-xs font-bold text-white">{row.sym}</span>
+                                                            <span className="text-[10px] text-[#a8a8a0] ml-2">{row.name}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="text-xs text-white">{row.price}</span>
+                                                            <span className="text-[10px] font-bold text-[#4ade9a] bg-[#4ade9a]/10 px-1.5 py-0.5 rounded">{row.pct}</span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            {activeStep === 2 && (
+                                <div className="w-full" style={{ animation: 'fadeInUp 0.4s ease' }}>
+                                    {/* Mini Feed Replica */}
+                                    <div className="bg-[#111c18] border border-[#2a3d30] rounded-xl overflow-hidden max-w-lg mx-auto">
+                                        <div className="flex items-center gap-2 px-4 py-2.5 bg-[#0d1a14] border-b border-[#2a3d30]">
+                                            <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></div>
+                                            <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]"></div>
+                                            <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]"></div>
+                                            <span className="ml-2 text-[10px] text-[#a8a8a0]">CashMere — Feed</span>
+                                        </div>
+                                        <div className="p-5 space-y-3">
+                                            {[
+                                                { avatar: 'SJ', color: 'bg-blue-500', name: 'Sarah Jenkins', time: '2h ago', action: 'purchased 15 shares of', ticker: 'TSLA', likes: 12, comments: 3 },
+                                                { avatar: 'MR', color: 'bg-purple-500', name: 'Mike Ross', time: '5h ago', action: 'hit a new all-time high portfolio value!', ticker: 'Portfolio', likes: 24, comments: 8 },
+                                                { avatar: 'EC', color: 'bg-pink-500', name: 'Elena Chen', time: '1d ago', action: 'sold their position in', ticker: 'AAPL', likes: 7, comments: 2 },
+                                            ].map((post, i) => (
+                                                <div key={i} className="bg-[#0d1a14] border border-[#2a3d30]/50 rounded-lg p-3">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <div className={`w-7 h-7 rounded-full ${post.color} flex items-center justify-center text-[9px] font-bold text-white`}>{post.avatar}</div>
+                                                        <div>
+                                                            <div className="text-xs font-bold text-white">{post.name}</div>
+                                                            <div className="text-[9px] text-[#a8a8a0]">{post.time}</div>
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-[11px] text-[#a8a8a0] mb-2">
+                                                        {post.action}{' '}
+                                                        <span className="font-bold text-white bg-[#4ade9a]/10 px-1.5 py-0.5 rounded text-[#4ade9a]">{post.ticker}</span>
+                                                    </p>
+                                                    <div className="flex items-center gap-4 text-[10px] text-[#a8a8a0]">
+                                                        <span>👍 {post.likes}</span>
+                                                        <span>💬 {post.comments}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </AnimateIn>
+
+                    {/* Steps row with progress bar */}
+                    <AnimateIn delay={0.3}>
+                        <div className="relative">
+                            {/* Progress bar background */}
+                            <div className="absolute top-5 left-[16.66%] right-[16.66%] h-[2px] bg-[#2a3d30]"></div>
+                            {/* Progress bar fill */}
+                            <div className="absolute top-5 left-[16.66%] h-[2px] bg-[#4ade9a] transition-all duration-500" style={{ width: `${activeStep * 33.33}%` }}></div>
+
+                            <div className="relative grid grid-cols-3 gap-4">
+                                {[
+                                    { label: 'STEP 1', title: 'Track Your Portfolio', desc: 'See all your positions, live P&L, AI insights, and account analytics in one beautiful dashboard.' },
+                                    { label: 'STEP 2', title: 'Explore Markets', desc: 'Real-time indices, top gainers, sector heatmaps, and a powerful search — all the data you need.' },
+                                    { label: 'STEP 3', title: 'Connect & Share', desc: 'Follow friends, see their trades, react and comment — investing is better together.' },
+                                ].map((step, i) => (
+                                    <div key={i} className="flex flex-col items-center cursor-pointer group" onClick={() => setActiveStep(i)}>
+                                        {/* Step dot */}
+                                        <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-xs font-bold mb-4 transition-all duration-300 ${
+                                            i <= activeStep
+                                                ? 'bg-[#4ade9a] border-[#4ade9a] text-[#0d1a14]'
+                                                : 'bg-transparent border-[#2a3d30] text-[#a8a8a0] group-hover:border-[#4ade9a]/50'
+                                        }`}>
+                                            {i + 1}
+                                        </div>
+                                        <span className={`text-xs uppercase tracking-widest mb-2 transition-colors duration-300 ${i === activeStep ? 'text-[#4ade9a]' : 'text-[#a8a8a0]'}`}>{step.label}</span>
+                                        <h4 className={`text-sm font-semibold mb-1 transition-colors duration-300 ${i === activeStep ? 'text-white' : 'text-[#a8a8a0]'}`}>{step.title}</h4>
+                                        <p className={`text-xs text-center leading-relaxed transition-all duration-300 max-w-[220px] ${i === activeStep ? 'text-[#a8a8a0] opacity-100' : 'opacity-0 h-0 overflow-hidden md:opacity-50 md:h-auto'}`}>{step.desc}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </AnimateIn>
                 </div>
             </section>
 
             {/* 6. Trusted by Millions */}
-            <section className="relative py-24 px-6" style={{ background: 'linear-gradient(to bottom, #0d1a14, #111c18)' }}>
-                <div className="max-w-5xl mx-auto text-center">
+            <section className="relative py-24 px-6 overflow-hidden" style={{ background: 'linear-gradient(to bottom, #0d1a14, #111c18)' }}>
+                {/* Cinematic watermark */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+                    <span className="text-[160px] md:text-[220px] font-black text-white/[0.03] leading-none tracking-tighter">TRUST</span>
+                </div>
+                <div className="max-w-5xl mx-auto text-center relative z-10">
                     <AnimateIn>
-                        <h2 className="text-5xl font-serif font-bold mb-16" style={{ fontFamily: 'Playfair Display, serif' }}>Trusted by Millions</h2>
+                        <h2 className="text-5xl font-serif font-bold mb-16" style={{ fontFamily: 'Playfair Display, serif' }}>Built for Serious Investors</h2>
                     </AnimateIn>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
                         {[
-                            { stat: '5M+', label: 'Active Investors' },
-                            { stat: '$500B+', label: 'Assets Under Management' },
-                            { stat: '24/7', label: 'Customer Support' },
-                        ].map((s, i) => (
+                            { value: 50, suffix: '+', label: 'Stocks, Crypto & ETFs' },
+                            { value: 10, suffix: 's', label: 'Live Price Refresh Rate' },
+                            { static: '24/7', label: 'AI Portfolio Analysis' },
+                        ].map((s: any, i) => (
                             <AnimateIn key={i} delay={i * 0.15}>
                                 <div>
-                                    <div className="text-5xl font-bold text-[#4ade9a] mb-2">{s.stat}</div>
+                                    <div className="text-5xl font-bold text-[#4ade9a] mb-2">
+                                        {s.static ? s.static : <CountUp target={s.value} prefix={s.prefix || ''} suffix={s.suffix || ''} />}
+                                    </div>
                                     <p className="text-[#a8a8a0] text-lg">{s.label}</p>
                                 </div>
                             </AnimateIn>
@@ -400,12 +893,51 @@ export default function Home() {
             </section>
 
             {/* 9. Final CTA */}
-            <section className="relative py-32 px-6 text-center" style={{ background: '#0f1d17' }}>
+            <section className="relative py-32 px-6 text-center overflow-hidden" style={{ background: '#0a1410', backgroundImage: 'radial-gradient(circle, #2a3d30 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
+                {/* Section corner brackets */}
+                <div className="absolute top-6 left-6 w-12 h-12">
+                    <div className="absolute top-0 left-0 w-full h-[2px] bg-[#4ade9a]/30"></div>
+                    <div className="absolute top-0 left-0 h-full w-[2px] bg-[#4ade9a]/30"></div>
+                </div>
+                <div className="absolute top-6 right-6 w-12 h-12">
+                    <div className="absolute top-0 right-0 w-full h-[2px] bg-[#4ade9a]/30"></div>
+                    <div className="absolute top-0 right-0 h-full w-[2px] bg-[#4ade9a]/30"></div>
+                </div>
+                <div className="absolute bottom-6 left-6 w-12 h-12">
+                    <div className="absolute bottom-0 left-0 w-full h-[2px] bg-[#4ade9a]/30"></div>
+                    <div className="absolute bottom-0 left-0 h-full w-[2px] bg-[#4ade9a]/30"></div>
+                </div>
+                <div className="absolute bottom-6 right-6 w-12 h-12">
+                    <div className="absolute bottom-0 right-0 w-full h-[2px] bg-[#4ade9a]/30"></div>
+                    <div className="absolute bottom-0 right-0 h-full w-[2px] bg-[#4ade9a]/30"></div>
+                </div>
+
                 <AnimateIn>
-                    <div className="max-w-3xl mx-auto">
-                        <h2 className="text-5xl md:text-6xl font-serif font-bold mb-6" style={{ fontFamily: 'Playfair Display, serif' }}>Ready to Transform Your Portfolio?</h2>
-                        <p className="text-lg text-[#a8a8a0] mb-10">Join millions of investors building wealth with CashMere.</p>
-                        <Link href="/login" className="inline-block px-10 py-4 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-full font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-[#4ade9a]/20">Get Started Now</Link>
+                    <div className="max-w-3xl mx-auto relative z-10">
+                        {/* Logo */}
+                        <div className="w-14 h-14 bg-[#4ade9a] rounded-xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-[#4ade9a]/20">
+                            <span className="text-[#0d1a14] font-bold text-xl">C</span>
+                        </div>
+
+                        {/* Heading with cycling word */}
+                        <h2 className="text-5xl md:text-6xl font-bold mb-6 leading-tight text-white" style={{ fontFamily: 'Playfair Display, serif' }}>
+                            Join us today and<br />start building{' '}
+                            <span className="relative inline-block">
+                                <span key={cycleWord} className="text-[#4ade9a]" style={{ animation: 'wordCycle 0.5s ease' }}>
+                                    {cycleWords[cycleWord]}
+                                </span>
+                                <span className="inline-block w-[2px] h-[0.9em] bg-[#4ade9a] ml-1 align-middle" style={{ animation: 'blink 1s step-end infinite' }}></span>
+                            </span>
+                        </h2>
+
+                        <p className="text-lg text-[#a8a8a0] mb-10 max-w-xl mx-auto leading-relaxed">
+                            Join millions of investors worldwide who trust CashMere to grow their wealth with cutting-edge tools and zero barriers.
+                        </p>
+
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                            <button className="px-8 py-3.5 border border-[#2a3d30] hover:border-[#4ade9a] rounded-full font-semibold transition-all duration-300 hover:bg-[#4ade9a]/10">Try for free</button>
+                            <Link href="/login" className="px-8 py-3.5 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-full font-semibold transition-all duration-300 transform hover:scale-105 animate-btnPulse">Get Started</Link>
+                        </div>
                     </div>
                 </AnimateIn>
             </section>
@@ -436,6 +968,62 @@ export default function Home() {
                 }
                 .animate-ticker {
                     animation: ticker 40s linear infinite;
+                }
+                @keyframes wordCycle {
+                    0% { opacity: 0; transform: translateY(10px); }
+                    100% { opacity: 1; transform: translateY(0); }
+                }
+                @keyframes blink {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0; }
+                }
+                @keyframes barGrow {
+                    from { width: 0%; }
+                }
+                @keyframes btnPulse {
+                    0% { box-shadow: 0 0 0 0 rgba(74,222,154,0.4); }
+                    70% { box-shadow: 0 0 0 18px rgba(74,222,154,0); }
+                    100% { box-shadow: 0 0 0 0 rgba(74,222,154,0); }
+                }
+                .animate-btnPulse {
+                    animation: btnPulse 2.5s ease-in-out infinite;
+                }
+                @keyframes waveSlide1 {
+                    0% { transform: translateX(0); }
+                    100% { transform: translateX(-50%); }
+                }
+                @keyframes waveSlide2 {
+                    0% { transform: translateX(0); }
+                    100% { transform: translateX(-50%); }
+                }
+                @keyframes waveSlide3 {
+                    0% { transform: translateX(0); }
+                    100% { transform: translateX(-50%); }
+                }
+                .animate-wave1 { animation: waveSlide1 20s linear infinite; }
+                .animate-wave2 { animation: waveSlide2 14s linear infinite; }
+                .animate-wave3 { animation: waveSlide3 9s linear infinite; }
+                @keyframes blobDrift1 {
+                    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+                    33% { transform: translate(80px, -60px) rotate(120deg); }
+                    66% { transform: translate(-40px, 40px) rotate(240deg); }
+                }
+                @keyframes blobDrift2 {
+                    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+                    33% { transform: translate(-60px, 80px) rotate(-120deg); }
+                    66% { transform: translate(50px, -30px) rotate(-240deg); }
+                }
+                @keyframes blobDrift3 {
+                    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+                    33% { transform: translate(40px, 60px) rotate(90deg); }
+                    66% { transform: translate(-70px, -40px) rotate(200deg); }
+                }
+                .animate-blob1 { animation: blobDrift1 15s ease-in-out infinite; }
+                .animate-blob2 { animation: blobDrift2 22s ease-in-out infinite; }
+                .animate-blob3 { animation: blobDrift3 18s ease-in-out infinite; }
+                @keyframes fadeInUp {
+                    from { opacity: 0; transform: translateY(20px); }
+                    to { opacity: 1; transform: translateY(0); }
                 }
             `}</style>
         </div>
