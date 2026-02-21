@@ -29,9 +29,9 @@ export default function Home() {
                 <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-[#4ade9a] rounded-lg flex items-center justify-center">
-                            <span className="text-[#0d1a14] font-bold text-sm">W</span>
+                            <span className="text-[#0d1a14] font-bold text-sm">C</span>
                         </div>
-                        <span className="font-semibold text-lg tracking-tight">Winners</span>
+                        <span className="font-semibold text-lg tracking-tight">CashMere</span>
                     </div>
 
                     <div className="flex items-center gap-4">

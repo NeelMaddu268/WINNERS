@@ -21,6 +21,13 @@ export default function PhoneAuth() {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
+        // Optional: for development/testing, you can bypass the real reCAPTCHA if you
+        // use a testing phone number from the Firebase console, OR set this flag to
+        // true to use dummy recaptchas on localhost (this only works if also enabled in console)
+        if (process.env.NODE_ENV === "development") {
+            auth.settings.appVerificationDisabledForTesting = true;
+        }
+
         // Initialize reCAPTCHA on component mount
         if (typeof window !== "undefined" && !window.recaptchaVerifier) {
             window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {

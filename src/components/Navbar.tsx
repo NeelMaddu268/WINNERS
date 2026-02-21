@@ -51,9 +51,9 @@ export default function Navbar() {
                 {/* Logo/Brand */}
                 <div className="flex items-center gap-3 pr-6">
                     <div className="w-8 h-8 bg-[#4ade9a] rounded-lg flex items-center justify-center">
-                        <span className="text-[#0d1a14] font-bold text-sm">W</span>
+                        <span className="text-[#0d1a14] font-bold text-sm">C</span>
                     </div>
-                    <span className="font-semibold text-lg tracking-tight text-[#f0ede8]">Winners</span>
+                    <span className="font-semibold text-lg tracking-tight text-[#f0ede8]">CashMere</span>
                 </div>
 
                 {/* Navigation Links */}
