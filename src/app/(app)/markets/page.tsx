@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { searchTickers } from "@/app/actions/fmp";
+import { searchTickers } from "@/app/actions/market";
 
 type TickerItem = { ticker: string; name: string; price: number; diff: string; isPositive: boolean };
 
@@ -52,7 +52,7 @@ export default function MarketsPage() {
     }, []);
 
     useEffect(() => {
-        import("@/app/actions/fmp").then(({ getMarketIndex, getBatchQuotes }) => {
+        import("@/app/actions/market").then(({ getMarketIndex, getBatchQuotes }) => {
             getMarketIndex("^GSPC").then(data => {
                 const diffStr = `${data.change >= 0 ? '+' : ''}${data.change?.toFixed(2)} (${data.changesPercentage?.toFixed(2)}%)`;
                 setIndexData({ price: data.price, diff: diffStr, isPositive: data.change >= 0 });
