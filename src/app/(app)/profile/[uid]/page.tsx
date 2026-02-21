@@ -15,6 +15,7 @@ export default function ProfilePage({ params }: { params: Promise<{ uid: string 
     const [targetUser, setTargetUser] = useState<any>(null);
     const [currentUserData, setCurrentUserData] = useState<any>(null);
     const [hasPendingRequest, setHasPendingRequest] = useState(false);
+    const [isUnfriendModalOpen, setIsUnfriendModalOpen] = useState(false);
 
     // Portfolio state if allowed to view
     const [portfolio, setPortfolio] = useState<any[]>([]);
@@ -147,24 +148,24 @@ export default function ProfilePage({ params }: { params: Promise<{ uid: string 
     const removeFriend = async () => {
         if (!auth.currentUser || !targetUid) return;
 
-        if (window.confirm(`Are you sure you want to unfriend ${targetUser?.displayName || targetUser?.username || "this user"}?`)) {
-            try {
-                // Optimistic update
-                setCurrentUserData((prev: any) => prev ? ({ ...prev, friends: prev.friends?.filter((id: string) => id !== targetUid) || [] }) : prev);
+        try {
+            // Optimistic update
+            setCurrentUserData((prev: any) => prev ? ({ ...prev, friends: prev.friends?.filter((id: string) => id !== targetUid) || [] }) : prev);
 
-                // Remove from my friends
-                await updateDoc(doc(db, "users", auth.currentUser.uid), {
-                    friends: arrayRemove(targetUid)
-                });
+            // Remove from my friends
+            await updateDoc(doc(db, "users", auth.currentUser.uid), {
+                friends: arrayRemove(targetUid)
+            });
 
-                // Remove me from their friends
-                await updateDoc(doc(db, "users", targetUid), {
-                    friends: arrayRemove(auth.currentUser.uid)
-                });
-            } catch (e) {
-                console.error("Failed to remove friend", e);
-                // We're not reverting optimistic state here for simplicity, but in prod we should
-            }
+            // Remove me from their friends
+            await updateDoc(doc(db, "users", targetUid), {
+                friends: arrayRemove(auth.currentUser.uid)
+            });
+        } catch (e) {
+            console.error("Failed to remove friend", e);
+            // We're not reverting optimistic state here for simplicity, but in prod we should
+        } finally {
+            setIsUnfriendModalOpen(false);
         }
     };
 
@@ -185,7 +186,7 @@ export default function ProfilePage({ params }: { params: Promise<{ uid: string 
                         ) : isFriend ? (
                             <div className="flex gap-2">
                                 <span className="bg-[#00c805]/20 text-[#00c805] border border-[#00c805]/30 px-3 py-1 text-sm font-bold rounded-full">✓ Friends</span>
-                                <button onClick={removeFriend} className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-3 py-1 text-sm font-bold rounded-full transition-colors flex items-center gap-1">
+                                <button onClick={() => setIsUnfriendModalOpen(true)} className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-3 py-1 text-sm font-bold rounded-full transition-colors flex items-center gap-1">
                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                     Unfriend
                                 </button>
@@ -289,6 +290,40 @@ export default function ProfilePage({ params }: { params: Promise<{ uid: string 
                     </>
                 )}
             </div>
+
+            {/* Unfriend Confirmation Modal */}
+            {isUnfriendModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="bg-[#111] border border-zinc-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="p-6 text-center">
+                            <div className="w-16 h-16 rounded-full bg-red-500/20 text-red-500 mx-auto flex items-center justify-center mb-4 border border-red-500/30">
+                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6" />
+                                </svg>
+                            </div>
+                            <h3 className="text-xl font-bold text-white mb-2">Remove Friend?</h3>
+                            <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
+                                Are you sure you want to unfriend <strong className="text-white">{targetUser.displayName || targetUser.username}</strong>? You will no longer be able to see each other's private portfolios or friends-only posts.
+                            </p>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setIsUnfriendModalOpen(false)}
+                                    className="flex-1 py-3 px-4 bg-zinc-800 hover:bg-zinc-700 text-white font-bold rounded-xl transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={removeFriend}
+                                    className="flex-1 py-3 px-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+                                >
+                                    Unfriend
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

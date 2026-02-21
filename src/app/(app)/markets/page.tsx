@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { searchTickers, getMarketIndex, getTopGainersLosers, getVolumeLeaders, getSectorPerformance, getEarningsCalendar, getEconomicCalendar, getBatchQuotes } from "@/app/actions/market";
+import { searchTickers, getMarketIndex, getTopGainersLosers, getVolumeLeaders, getSectorPerformance, getEarningsCalendar, getEconomicCalendar, getBatchQuotes, getMarketBreadth } from "@/app/actions/market";
+import { auth, db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 // ─── Types ────────────────────────────────────────────────────
 type IndexCard = { label: string; symbol: string; price: number; change: number; pct: number; path: string };
@@ -12,13 +14,26 @@ type EarningItem = { symbol: string; name: string; epsEstimate: string };
 type EconomicEvent = { time: string; event: string; impact: "high" | "medium" | "low"; forecast: string };
 
 // ─── Helpers ──────────────────────────────────────────────────
-function randomSparkPath(): string {
-    const pts: { x: number; y: number }[] = [{ x: 0, y: 25 + Math.random() * 20 }];
-    for (let i = 1; i <= 16; i++) {
-        const prev = pts[i - 1].y;
-        pts.push({ x: i * 6.25, y: Math.max(5, Math.min(45, prev + (Math.random() - 0.48) * 12)) });
-    }
-    return `M ${pts[0].x},${pts[0].y}` + pts.slice(1).map(p => ` L ${p.x},${p.y}`).join("");
+function generateSparklinePath(prices: number[]): string {
+    if (!prices || prices.length === 0) return "";
+    if (prices.length === 1) return `M 0,25 L 100,25`;
+
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    const range = max - min || 1;
+
+    const padY = 5;
+    const height = 50 - padY * 2;
+    const scaleX = 100 / (prices.length - 1);
+
+    const pts = prices.map((p, i) => {
+        const x = i * scaleX;
+        const normalized = (p - min) / range;
+        const y = padY + height - (normalized * height);
+        return { x, y };
+    });
+
+    return `M ${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)}` + pts.slice(1).map(p => ` L ${p.x.toFixed(2)},${p.y.toFixed(2)}`).join("");
 }
 
 function fmtVol(n: number): string {
@@ -114,14 +129,14 @@ export default function MarketsPage() {
 
     // Indices
     const [indices, setIndices] = useState<IndexCard[]>([
-        { label: "S&P 500", symbol: "SPY", price: 0, change: 0, pct: 0, path: randomSparkPath() },
-        { label: "Nasdaq", symbol: "QQQ", price: 0, change: 0, pct: 0, path: randomSparkPath() },
-        { label: "Dow Jones", symbol: "DIA", price: 0, change: 0, pct: 0, path: randomSparkPath() },
+        { label: "S&P 500", symbol: "SPY", price: 0, change: 0, pct: 0, path: "" },
+        { label: "Nasdaq", symbol: "QQQ", price: 0, change: 0, pct: 0, path: "" },
+        { label: "Dow Jones", symbol: "DIA", price: 0, change: 0, pct: 0, path: "" },
     ]);
 
-    // Breadth (simulated)
-    const [breadth] = useState({ up: 2645, down: 1189 });
-    const breadthTotal = breadth.up + breadth.down;
+    // Breadth
+    const [breadth, setBreadth] = useState({ up: 0, down: 0 });
+    const breadthTotal = breadth.up + breadth.down || 1; // Prevent div by 0 on load
 
     // Discovery tab
     const [discoveryTab, setDiscoveryTab] = useState<"gainers" | "losers" | "volume" | "movers">("gainers");
@@ -153,12 +168,15 @@ export default function MarketsPage() {
 
     // ── Data loading ──────────────────────────────────────────
     useEffect(() => {
+        // Broad data load
+        getMarketBreadth().then(setBreadth);
+
         // Big Three indices
-        Promise.all([getMarketIndex("SPY"), getMarketIndex("QQQ"), getMarketIndex("DIA")]).then(([spy, qqq, dia]) => {
+        Promise.all([getMarketIndex("^GSPC"), getMarketIndex("^IXIC"), getMarketIndex("^DJI")]).then(([spy, qqq, dia]) => {
             setIndices([
-                { label: "S&P 500", symbol: "SPY", price: spy.price, change: spy.change, pct: spy.changesPercentage, path: randomSparkPath() },
-                { label: "Nasdaq", symbol: "QQQ", price: qqq.price, change: qqq.change, pct: qqq.changesPercentage, path: randomSparkPath() },
-                { label: "Dow Jones", symbol: "DIA", price: dia.price, change: dia.change, pct: dia.changesPercentage, path: randomSparkPath() },
+                { label: "S&P 500", symbol: "^GSPC", price: spy.price, change: spy.change, pct: spy.changesPercentage, path: generateSparklinePath(spy.sparkline) },
+                { label: "Nasdaq", symbol: "^IXIC", price: qqq.price, change: qqq.change, pct: qqq.changesPercentage, path: generateSparklinePath(qqq.sparkline) },
+                { label: "Dow Jones", symbol: "^DJI", price: dia.price, change: dia.change, pct: dia.changesPercentage, path: generateSparklinePath(dia.sparkline) },
             ]);
         });
 
@@ -167,11 +185,11 @@ export default function MarketsPage() {
             setGainers(gl.gainers);
             setLosers(gl.losers);
             setVolumeLeaders(vol);
-            // Movers: stocks with |pct| > 2
+            // Movers: stocks with |pct| > 0.5 to ensure large caps appear
             const allMovers = [...gl.gainers, ...gl.losers, ...vol];
             const seen = new Set<string>();
             const gapList = allMovers.filter(m => {
-                if (Math.abs(m.changesPercentage) >= 2 && !seen.has(m.symbol)) { seen.add(m.symbol); return true; }
+                if (Math.abs(m.changesPercentage) >= 0.5 && !seen.has(m.symbol)) { seen.add(m.symbol); return true; }
                 return false;
             }).sort((a, b) => Math.abs(b.changesPercentage) - Math.abs(a.changesPercentage));
             setMovers(gapList);
@@ -189,12 +207,36 @@ export default function MarketsPage() {
         });
 
         // Watchlist
-        getBatchQuotes(WATCHLIST).then((data: any[]) => {
-            setWatchlistData(WATCHLIST.map(sym => {
-                const q = data.find((x: any) => x.symbol === sym);
-                return { symbol: sym, price: q?.price ?? 0, pct: q?.changesPercentage ?? 0, pos: (q?.changesPercentage ?? 0) >= 0 };
-            }));
+        const loadWatchlist = async () => {
+            let symbolsToLoad = WATCHLIST;
+            if (auth.currentUser) {
+                try {
+                    const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
+                    if (userDoc.exists() && userDoc.data().watchlist?.length > 0) {
+                        symbolsToLoad = userDoc.data().watchlist.slice(0, 10);
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch custom watchlist", e);
+                }
+            }
+            getBatchQuotes(symbolsToLoad).then((data: any[]) => {
+                setWatchlistData(symbolsToLoad.map(sym => {
+                    const q = data.find((x: any) => x.symbol === sym);
+                    return { symbol: sym, price: q?.price ?? 0, pct: q?.changesPercentage ?? 0, pos: (q?.changesPercentage ?? 0) >= 0 };
+                }));
+            });
+        };
+
+        const unsubAuth = auth.onAuthStateChanged(() => {
+            loadWatchlist();
         });
+
+        // initial load if auth is already resolved, though onAuthStateChanged fires immediately anyway.
+        if (auth.currentUser) {
+            loadWatchlist();
+        }
+
+        return () => unsubAuth();
     }, []);
 
     // Search with debounce
