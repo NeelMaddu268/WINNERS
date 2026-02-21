@@ -1,6 +1,6 @@
 "use server";
 
-import { getChartData } from "./fmp";
+import { getChartData } from "./market";
 
 const STARTING_CASH = 10000;
 

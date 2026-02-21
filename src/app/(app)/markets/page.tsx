@@ -2,16 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import {
-    searchTickers,
-    getMarketIndex,
-    getBatchQuotes,
-    getTopGainersLosers,
-    getVolumeLeaders,
-    getSectorPerformance,
-    getEarningsCalendar,
-    getEconomicCalendar,
-} from "@/app/actions/fmp";
+import { searchTickers } from "@/app/actions/market";
 
 // ─── Types ────────────────────────────────────────────────────
 type IndexCard = { label: string; symbol: string; price: number; change: number; pct: number; path: string };
@@ -218,9 +209,46 @@ export default function MarketsPage() {
         return () => document.removeEventListener("mousedown", h);
     }, []);
 
-    const discoveryItems: Record<string, MoverItem[]> = { gainers, losers, volume: volumeLeaders, gaps };
-    const showVol = discoveryTab === "volume";
-    const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+    useEffect(() => {
+        import("@/app/actions/market").then(({ getMarketIndex, getBatchQuotes }) => {
+            getMarketIndex("^GSPC").then(data => {
+                const diffStr = `${data.change >= 0 ? '+' : ''}${data.change?.toFixed(2)} (${data.changesPercentage?.toFixed(2)}%)`;
+                setIndexData({ price: data.price, diff: diffStr, isPositive: data.change >= 0 });
+            });
+
+            getBatchQuotes(["NVDA", "AAPL", "MSFT", "TSLA", "AMZN"]).then(data => {
+                const nameMap: Record<string, string> = { "NVDA": "NVIDIA", "AAPL": "Apple", "MSFT": "Microsoft", "TSLA": "Tesla", "AMZN": "Amazon" };
+                const formatted = data.map((q: { symbol: string, price: number, change: number, changesPercentage: number }) => ({
+                    ticker: q.symbol,
+                    name: nameMap[q.symbol] || q.symbol,
+                    price: q.price,
+                    diff: `${q.change >= 0 ? '+' : ''}${q.change?.toFixed(2)} (${q.changesPercentage?.toFixed(2)}%)`,
+                    isPositive: q.change >= 0
+                }));
+                const ordered = ["NVDA", "AAPL", "MSFT", "TSLA", "AMZN"].map(t => formatted.find((f: TickerItem) => f.ticker === t)).filter(Boolean) as TickerItem[];
+                if (ordered.length > 0) setTopTickers(ordered);
+            });
+        });
+    }, []);
+
+    const [spChartPath, setSpChartPath] = useState("M 0,40 L 5,38 L 10,42 L 15,35 L 20,38 L 25,25 L 30,28 L 35,45 L 40,35 L 45,48 L 50,15 L 55,30 L 60,10 L 65,25 L 70,15 L 75,25 L 80,18 L 85,22 L 90,18 L 95,20 L 100,16");
+
+    useEffect(() => {
+        const randomY = () => Math.floor(Math.random() * 40) + 10;
+        const points: { x: number; y: number }[] = [];
+        points.push({ x: 0, y: randomY() });
+        for (let i = 1; i <= 20; i++) points.push({ x: i * 5, y: randomY() });
+        const newPath = `M ${points[0].x},${points[0].y}` + points.slice(1).map((p) => ` L ${p.x},${p.y}`).join("");
+        setSpChartPath(newPath);
+    }, [activeTimeframe]);
+
+
+    const handleSelectSearchResult = (symbol: string) => {
+        setSearchQuery("");
+        setIsSearchDropdownOpen(false);
+        setSearchResults([]);
+        router.push(`/markets/${symbol}`);
+    };
 
     return (
         <div className="flex flex-col w-full animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans text-white pb-24 md:pb-8 max-w-2xl mx-auto gap-0">

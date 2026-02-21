@@ -50,7 +50,7 @@ export default function PortfolioPage() {
             return;
         }
         const symbols = mergedPositions.map(p => p.ticker);
-        import("@/app/actions/fmp").then(({ getBatchQuotes }) => {
+        import("@/app/actions/market").then(({ getBatchQuotes }) => {
             getBatchQuotes(symbols, forceRefresh).then((data: any[]) => {
                 const priceMap: Record<string, number> = {};
                 data.forEach((q: any) => { priceMap[q.symbol] = q.price; });

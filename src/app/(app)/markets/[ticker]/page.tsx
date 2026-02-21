@@ -6,7 +6,7 @@ import Link from "next/link";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, collection, addDoc } from "firebase/firestore";
 import { getInvestorHypeScore } from "@/app/actions/gemini";
-import { getQuote, getChartData, getPriceForDate } from "@/app/actions/fmp";
+import { getQuote, getChartData, getPriceForDate } from "@/app/actions/market";
 import { recalculatePortfolioFromTransactions } from "@/app/actions/portfolio";
 
 type TickerItem = { ticker: string; name: string; price: number; diff: string; isPositive: boolean };
@@ -45,6 +45,7 @@ export default function TickerPage() {
     // Trade Share Tracking
     const [recentTradeShareState, setRecentTradeShareState] = useState<"pending" | "shared" | "auto-shared" | "none">("none");
     const [recentTradeDetails, setRecentTradeDetails] = useState<any>(null);
+    const [tradeResultDetails, setTradeResultDetails] = useState<any>(null);
 
     useEffect(() => {
         if (!tickerSymbol) return;
@@ -303,10 +304,29 @@ export default function TickerPage() {
                 transactionHistory: [...transactionHistory, tx],
             });
 
+            // Calculate Result Details for UI
+            const isSell = tradeMode === "sell";
+            const profitAmount = isSell ? (execPrice - pos!.avgCost) * shares : 0;
+            const profitPercent = isSell && pos!.avgCost > 0 ? ((execPrice - pos!.avgCost) / pos!.avgCost) * 100 : 0;
+
+            setTradeResultDetails({
+                execPrice,
+                shares,
+                total,
+                isSell,
+                profitAmount,
+                profitPercent
+            });
+
             if (autoShare) {
                 // Post to feed
                 const feedRef = collection(db, "global_feed");
-                const actionText = tradeMode === "buy" ? `purchased ${shares.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares of` : `sold ${shares.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares of`;
+                let actionText = tradeMode === "buy" ? `purchased ${shares.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares of` : `sold ${shares.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares of`;
+                if (isSell) {
+                    const profitStr = profitAmount >= 0 ? `making a $${profitAmount.toFixed(2)} profit (+${profitPercent.toFixed(2)}%) on` : `taking a $${Math.abs(profitAmount).toFixed(2)} loss (${profitPercent.toFixed(2)}%) on`;
+                    actionText = `sold ${shares.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares, ${profitStr}`;
+                }
+
                 await addDoc(feedRef, {
                     user: {
                         name: auth.currentUser.displayName || "Anonymous",
@@ -329,7 +349,13 @@ export default function TickerPage() {
                 }, 2000);
             } else {
                 setRecentTradeShareState("pending");
-                setRecentTradeDetails({ tradeMode, shares, ticker: tickerData.ticker });
+                setRecentTradeDetails({
+                    tradeMode,
+                    shares,
+                    ticker: tickerData.ticker,
+                    profitAmount,
+                    profitPercent
+                });
                 setTradeSuccess(true);
             }
 
@@ -344,6 +370,7 @@ export default function TickerPage() {
         setIsTradeModalOpen(false);
         setTradeSuccess(false);
         setRecentTradeShareState("none");
+        setTradeResultDetails(null);
         setUserPosition(null);
         router.push("/portfolio");
     };
@@ -353,9 +380,16 @@ export default function TickerPage() {
         setRecentTradeShareState("shared");
         try {
             const feedRef = collection(db, "global_feed");
-            const actionText = recentTradeDetails.tradeMode === "buy"
+            let actionText = recentTradeDetails.tradeMode === "buy"
                 ? `purchased ${recentTradeDetails.shares.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares of`
                 : `sold ${recentTradeDetails.shares.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares of`;
+
+            if (recentTradeDetails.tradeMode === "sell") {
+                const profitAmount = recentTradeDetails.profitAmount || 0;
+                const profitPercent = recentTradeDetails.profitPercent || 0;
+                const profitStr = profitAmount >= 0 ? `making a $${profitAmount.toFixed(2)} profit (+${profitPercent.toFixed(2)}%) on` : `taking a $${Math.abs(profitAmount).toFixed(2)} loss (${profitPercent.toFixed(2)}%) on`;
+                actionText = `sold ${recentTradeDetails.shares.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares, ${profitStr}`;
+            }
 
             await addDoc(feedRef, {
                 user: {
@@ -735,7 +769,34 @@ export default function TickerPage() {
                                     </svg>
                                 </div>
                                 <h4 className="text-2xl font-bold mb-2">Order Complete</h4>
-                                <p className="text-zinc-400 text-sm mb-8">Your {tickerData.ticker} {tradeMode === "buy" ? "purchase" : "sale"} has been executed.</p>
+                                <p className="text-zinc-400 text-sm mb-6">Your {tickerData.ticker} {tradeMode === "buy" ? "purchase" : "sale"} has been executed.</p>
+
+                                {tradeResultDetails && (
+                                    <div className="w-full bg-zinc-800/50 rounded-2xl p-4 mb-6 text-left border border-zinc-700/50">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="text-zinc-400 text-sm">Execution Price</span>
+                                            <span className="font-bold text-white">${tradeResultDetails.execPrice.toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="text-zinc-400 text-sm">Shares {tradeResultDetails.isSell ? "Sold" : "Bought"}</span>
+                                            <span className="font-bold text-white">{tradeResultDetails.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-zinc-400 text-sm">Total Value</span>
+                                            <span className="font-bold text-white">${tradeResultDetails.total.toFixed(2)}</span>
+                                        </div>
+                                        {tradeResultDetails.isSell && (
+                                            <div className="flex justify-between items-center mt-3 pt-3 border-t border-zinc-700/50">
+                                                <span className="text-zinc-400 text-sm">Realized P&L</span>
+                                                <span className={`font-bold ${tradeResultDetails.profitAmount >= 0 ? "text-[#00c805]" : "text-red-500"}`}>
+                                                    {tradeResultDetails.profitAmount >= 0 ? "+" : ""}${tradeResultDetails.profitAmount.toFixed(2)}
+                                                    {" "}
+                                                    ({tradeResultDetails.profitAmount >= 0 ? "+" : ""}{tradeResultDetails.profitPercent.toFixed(2)}%)
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
                                 {recentTradeShareState === "auto-shared" && (
                                     <div className="text-sm text-[#00c805] font-bold flex items-center gap-2 bg-[#00c805]/10 px-4 py-2 rounded-full mt-2 animate-in slide-in-from-bottom-2">
