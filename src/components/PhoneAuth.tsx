@@ -1,0 +1,183 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+
+declare global {
+    interface Window {
+        recaptchaVerifier: any;
+    }
+}
+
+export default function PhoneAuth() {
+    const [countryCode, setCountryCode] = useState("+1");
+    const [phoneNumber, setPhoneNumber] = useState("");
+    const [verificationCode, setVerificationCode] = useState("");
+    const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        // Initialize reCAPTCHA on component mount
+        if (typeof window !== "undefined" && !window.recaptchaVerifier) {
+            window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                'size': 'invisible',
+                'callback': (response: any) => {
+                    // reCAPTCHA solved
+                },
+                'expired-callback': () => {
+                    // Response expired. Ask user to solve reCAPTCHA again.
+                    setError("reCAPTCHA expired. Please try again.");
+                    window.recaptchaVerifier.clear();
+                    window.recaptchaVerifier = null;
+                }
+            });
+        }
+    }, []);
+
+    const handleSendCode = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+        try {
+            if (!window.recaptchaVerifier) {
+                throw new Error("reCAPTCHA not initialized");
+            }
+
+            const appVerifier = window.recaptchaVerifier;
+            // Clean phone number input of non-digits
+            const cleanedNumber = phoneNumber.replace(/\D/g, "");
+            const formattedPhoneNumber = `${countryCode}${cleanedNumber}`;
+
+            const result = await signInWithPhoneNumber(auth, formattedPhoneNumber, appVerifier);
+            setConfirmationResult(result);
+        } catch (err: any) {
+            console.error(err);
+            if (err.code === "auth/invalid-phone-number") {
+                setError("That phone number looks invalid. Please check it and try again.");
+            } else if (err.code === "auth/too-many-requests") {
+                setError("Too many attempts. Please try again later.");
+            } else {
+                setError("Failed to send verification code. Please try again.");
+            }
+
+            if (window.recaptchaVerifier) {
+                window.recaptchaVerifier.clear();
+                window.recaptchaVerifier = null;
+                // re-initialize on next retry
+                window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleVerifyCode = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!confirmationResult) return;
+
+        setLoading(true);
+        setError(null);
+        try {
+            await confirmationResult.confirm(verificationCode);
+            setSuccess(true);
+        } catch (err: any) {
+            if (err.code === "auth/invalid-verification-code") {
+                setError("That code is incorrect. Please double check and try again.");
+            } else if (err.code === "auth/code-expired") {
+                setError("That code has expired. Please request a new one.");
+            } else {
+                setError("Failed to verify code. Please try again.");
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (success) {
+        return (
+            <div className="p-4 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded-md text-center font-medium">
+                Successfully signed in!
+            </div>
+        );
+    }
+
+    return (
+        <div className="w-full flex flex-col gap-4">
+            <h2 className="text-2xl font-bold mb-2 text-center text-zinc-900 dark:text-zinc-100">Phone Login</h2>
+
+            {error && (
+                <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md text-sm">
+                    {error}
+                </div>
+            )}
+
+            <div id="recaptcha-container"></div>
+
+            {!confirmationResult ? (
+                <form onSubmit={handleSendCode} className="flex flex-col gap-4">
+                    <div>
+                        <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300" htmlFor="phone">
+                            Phone Number
+                        </label>
+                        <div className="flex w-full">
+                            <select
+                                value={countryCode}
+                                onChange={(e) => setCountryCode(e.target.value)}
+                                className="px-3 py-2 border border-r-0 border-gray-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 rounded-l-md text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-24"
+                            >
+                                <option value="+1">🇺🇸 +1</option>
+                                <option value="+44">🇬🇧 +44</option>
+                                <option value="+91">🇮🇳 +91</option>
+                                <option value="+61">🇦🇺 +61</option>
+                            </select>
+                            <input
+                                type="tel"
+                                id="phone"
+                                value={phoneNumber}
+                                onChange={(e) => setPhoneNumber(e.target.value)}
+                                placeholder="(555) 000-0000"
+                                className="flex-1 w-full px-3 py-2 border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-r-md text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                required
+                            />
+                        </div>
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={loading || !phoneNumber}
+                        className="w-full bg-blue-600 text-white font-medium py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
+                    >
+                        {loading ? "Sending..." : "Send Verification Code"}
+                    </button>
+                </form>
+            ) : (
+                <form onSubmit={handleVerifyCode} className="flex flex-col gap-4">
+                    <div>
+                        <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300" htmlFor="code">
+                            6-Digit Verification Code
+                        </label>
+                        <input
+                            type="text"
+                            id="code"
+                            value={verificationCode}
+                            onChange={(e) => setVerificationCode(e.target.value)}
+                            placeholder="123456"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-md text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-center tracking-widest text-lg"
+                            maxLength={6}
+                            required
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={loading || !verificationCode}
+                        className="w-full bg-blue-600 text-white font-medium py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
+                    >
+                        {loading ? "Verifying..." : "Verify Code"}
+                    </button>
+                </form>
+            )}
+        </div>
+    );
+}
