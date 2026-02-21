@@ -146,6 +146,22 @@ export async function getChartData(symbol: string): Promise<{ date: string; open
     }
 }
 
+export async function getPriceForDate(symbol: string, dateOrTimestamp: string): Promise<number | null> {
+    const dateStr = dateOrTimestamp.includes("T") ? dateOrTimestamp.split("T")[0] : dateOrTimestamp;
+    try {
+        const chartData = await getChartData(symbol);
+        const exact = chartData.find((d) => d.date === dateStr);
+        if (exact) return exact.close;
+        const before = chartData.filter((d) => d.date <= dateStr).sort((a, b) => b.date.localeCompare(a.date))[0];
+        const after = chartData.filter((d) => d.date >= dateStr).sort((a, b) => a.date.localeCompare(b.date))[0];
+        if (before) return before.close;
+        if (after) return after.close;
+        return chartData.length > 0 ? chartData[chartData.length - 1].close : null;
+    } catch {
+        return null;
+    }
+}
+
 export async function getBatchQuotes(symbols: string[]) {
     try {
         const symbolString = symbols.sort().join(",");
