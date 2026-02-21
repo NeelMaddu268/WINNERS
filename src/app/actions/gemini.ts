@@ -9,6 +9,7 @@ const FINNHUB_KEY = process.env.FINNHUB_API_KEY;
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
+const PULSE_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // Portfolio Pulse scores: once per day or on trade
 const MAX_REQUESTS_PER_MINUTE = 150; // Paid Tier 1
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
@@ -31,8 +32,8 @@ function getCached(key: string): string | null {
     return entry.data;
 }
 
-function setCache(key: string, data: string): void {
-    cache.set(key, { data, expires: Date.now() + CACHE_TTL_MS });
+function setCache(key: string, data: string, ttlMs?: number): void {
+    cache.set(key, { data, expires: Date.now() + (ttlMs ?? CACHE_TTL_MS) });
 }
 
 async function rateLimitAcquire(): Promise<void> {
@@ -88,6 +89,47 @@ async function fetchStockNewsContext(tickers: string[]): Promise<string> {
     return results.length > 0 ? `\n\nRECENT NEWS CONTEXT (use this for time-relevant analysis):\n${results.join("\n\n")}` : "";
 }
 
+/** Fetch Finnhub news for most-talked-about stocks NOT in the user's portfolio (for Lookout). */
+async function fetchLookoutNewsContext(portfolioTickers: string[]): Promise<string> {
+    if (!FINNHUB_KEY) return "";
+    const exclude = new Set(portfolioTickers.map((t) => t.toUpperCase()));
+    const to = new Date();
+    const from = new Date(to);
+    from.setDate(from.getDate() - 30);
+    const fromStr = from.toISOString().split("T")[0];
+    const toStr = to.toISOString().split("T")[0];
+    let candidateTickers: string[] = [];
+    try {
+        const { getTopGainersLosers, getVolumeLeaders } = await import("@/app/actions/market");
+        const [gl, vol] = await Promise.all([getTopGainersLosers(), getVolumeLeaders()]);
+        const all = [...gl.gainers, ...gl.losers, ...vol].map((m) => m.symbol);
+        candidateTickers = [...new Set(all)].filter((s) => !exclude.has(s.toUpperCase())).slice(0, 6);
+    } catch {
+        candidateTickers = ["NVDA", "AAPL", "TSLA", "AMZN", "MSFT", "GOOGL", "META", "AMD", "COIN", "PLTR"]
+            .filter((s) => !exclude.has(s));
+    }
+    if (candidateTickers.length === 0) return "";
+    const results: string[] = [];
+    for (const symbol of candidateTickers.slice(0, 5)) {
+        try {
+            const res = await fetch(
+                `https://finnhub.io/api/v1/company-news?symbol=${symbol}&from=${fromStr}&to=${toStr}&token=${FINNHUB_KEY}`,
+                { next: { revalidate: 300 } }
+            );
+            const data = (await res.json()) as { headline?: string; summary?: string; source?: string; datetime?: number }[];
+            if (Array.isArray(data) && data.length > 0) {
+                const items = data.slice(0, 6).map((n) => `- ${n.headline || ""} (${n.source || "news"})`);
+                results.push(`[${symbol} Finnhub news]\n${items.join("\n")}`);
+            }
+        } catch {
+            /* ignore */
+        }
+    }
+    return results.length > 0
+        ? `\n\nFINNHUB NEWS (use this to find most talked-about stocks; EXCLUDE from output: ${portfolioTickers.join(", ") || "none"}):\n${results.join("\n\n")}`
+        : "";
+}
+
 export type PortfolioPulseResult = {
     insight: string;
     overvaluation: number;
@@ -99,7 +141,7 @@ export type AccountInsightItem = {
     ticker: string;
     name: string;
     movement: string;
-    drivers: string;
+    drivers: string[];
     interpretation: string;
 };
 
@@ -135,7 +177,7 @@ export async function getPortfolioPulse(
     holdings: { ticker: string; name: string; shares: number; costBasis: number }[]
 ): Promise<PortfolioPulseResult | null> {
     if (!genAI) return null;
-    const cacheKey = `pulse:${timeframe}:${holdings.map((h) => h.ticker).sort().join(",")}`;
+    const cacheKey = `pulse:${timeframe}:${holdings.map((h) => `${h.ticker}:${h.shares}`).sort().join(",")}`;
     const cached = getCached(cacheKey);
     if (cached) return JSON.parse(cached) as PortfolioPulseResult;
     try {
@@ -149,13 +191,13 @@ ${newsContext}
 
 Generate a portfolio-level analysis based on the news context above and your knowledge. Output JSON:
 {
-  "insight": "<2-4 paragraph analysis of sector clustering, concentration risks, shared tailwinds, cross-holding themes>",
+  "insight": "<2-4 short bullet points: sector clustering, concentration risks, shared tailwinds, cross-holding themes. No long paragraphs.>",
   "overvaluation": <0-100 score>,
   "growthPotential": <0-100 score>,
   "politicalClimate": <0-100 score>
 }`;
         const text = await generateJson(GEMINIRULES, userPrompt);
-        setCache(cacheKey, text);
+        setCache(cacheKey, text, PULSE_CACHE_TTL_MS);
         return JSON.parse(text) as PortfolioPulseResult;
     } catch (e) {
         console.error("getPortfolioPulse error:", e);
@@ -186,10 +228,11 @@ ${newsContext}
 
 Explain movements in the user's positions using the news context above. Output JSON:
 {
-  "items": [{"ticker": "...", "name": "...", "movement": "...", "drivers": "...", "interpretation": "..."}],
+  "items": [{"ticker": "...", "name": "...", "movement": "...", "drivers": ["<bullet 1>", "<bullet 2>", ...], "interpretation": "..."}],
   "portfolioObservation": "<summary of what positions collectively indicate>",
   "watchItems": ["<string>", ...]
-}`;
+}
+Each driver must be a separate array element—one short sentence per bullet. Never combine multiple drivers into one string. Include encouragement, reassurance, or a tip in interpretation when natural.`;
         const text = await generateJson(GEMINIRULES, userPrompt);
         setCache(cacheKey, text);
         return JSON.parse(text) as AccountInsightsResult;
@@ -201,28 +244,27 @@ Explain movements in the user's positions using the news context above. Output J
 
 export async function getLookout(
     timeframe: string,
-    holdings: { ticker: string; name: string }[],
+    holdings: { ticker: string; name: string }[] = [],
     watchlist: string[] = []
 ): Promise<LookoutResult | null> {
     if (!genAI) return null;
-    const cacheKey = `lookout:${timeframe}:${holdings.map((h) => h.ticker).sort().join(",")}:${watchlist.sort().join(",")}`;
+    const portfolioTickers = [...new Set([...holdings.map((h) => h.ticker), ...watchlist])];
+    const cacheKey = `lookout:${timeframe}:${portfolioTickers.sort().join(",")}`;
     const cached = getCached(cacheKey);
     if (cached) return JSON.parse(cached) as LookoutResult;
     try {
         await rateLimitAcquire();
-        const tickers = [...new Set([...holdings.map((h) => h.ticker), ...watchlist])];
-        const newsContext = await fetchStockNewsContext(tickers);
+        const newsContext = await fetchLookoutNewsContext(portfolioTickers);
         const userPrompt = `You are operating in Lookout mode. Follow the rules in GEMINIRULES.MD strictly.
 
 Timeframe: ${timeframe}
-User holdings: ${JSON.stringify(holdings)}
-Watchlist: ${JSON.stringify(watchlist)}
+User's portfolio tickers (EXCLUDE these from your output—do not surface any of these): ${portfolioTickers.length > 0 ? portfolioTickers.join(", ") : "none"}
 ${newsContext}
 
-Surface early signals within the timeframe using the news context above. For each item, include the stock ticker if it's a specific company. Output JSON:
+Use the Finnhub news above to identify the most talked-about stocks in this timeframe. Surface ONLY stocks that are NOT in the user's portfolio. For each item, include the stock ticker if it's a specific company. Output JSON:
 {
   "items": [
-    {"ticker": "AAPL" or null, "name": "Apple Inc", "item": "<brief description>", "whyItMatters": "<why for user>", "signalType": "risk"|"opportunity"|"watch"}
+    {"ticker": "AAPL" or null, "name": "Apple Inc", "item": "<brief description>", "whyItMatters": "<why it matters to investors generally>", "signalType": "risk"|"opportunity"|"watch"}
   ]
 }`;
         const text = await generateJson(GEMINIRULES, userPrompt);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
@@ -26,6 +26,8 @@ export default function PortfolioPage() {
     const [cashBalance, setCashBalance] = useState<number>(10000);
     const [transactionsWithPrices, setTransactionsWithPrices] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
+    const [portfolioRecalculating, setPortfolioRecalculating] = useState(false);
+    const portfolioRecalculatingRef = useRef(false);
     const [livePrices, setLivePrices] = useState<Record<string, number>>({});
     const [activeTab, setActiveTab] = useState<"assets" | "history">("assets");
     const [timeframe, setTimeframe] = useState("2 wks");
@@ -135,19 +137,29 @@ export default function PortfolioPage() {
     // Derive portfolio and cash from transaction history (price based on timestamp)
     useEffect(() => {
         if (transactionHistory.length === 0) {
+            portfolioRecalculatingRef.current = false;
+            setPortfolioRecalculating(false);
             setPortfolio([]);
             setCashBalance(10000);
             setTransactionsWithPrices([]);
             return;
         }
+        portfolioRecalculatingRef.current = true;
+        setPortfolioRecalculating(true);
         recalculatePortfolioFromTransactions(transactionHistory).then(({ portfolio: p, cashBalance: c, transactionsWithPrices: twp }) => {
             setPortfolio(p);
             setCashBalance(c);
             setTransactionsWithPrices(twp);
+            portfolioRecalculatingRef.current = false;
+            setPortfolioRecalculating(false);
         });
     }, [transactionHistory]);
 
     useEffect(() => {
+        if (loading || portfolioRecalculating || portfolioRecalculatingRef.current) {
+            setAiLoading({ pulse: false, insights: false, lookout: false });
+            return;
+        }
         const holdings = mergedPositions.map((p) => ({ ticker: p.ticker, name: p.name, shares: p.shares, costBasis: p.costBasis }));
         setAiLoading({ pulse: true, insights: true, lookout: true });
         getPortfolioPulse(timeframe, holdings).then((r) => {
@@ -177,7 +189,7 @@ export default function PortfolioPage() {
                 });
             }
         });
-    }, [timeframe, mergedPositions, transactionsWithPrices]);
+    }, [timeframe, mergedPositions, transactionsWithPrices, loading, portfolioRecalculating]);
 
     useEffect(() => {
         // Generate mock candlestick data for the mini chart
@@ -238,7 +250,7 @@ export default function PortfolioPage() {
                             </div>
                         ) : portfolioPulse ? (
                             <>
-                                <p className="text-base md:text-lg text-[#a8a8a0] leading-relaxed max-w-3xl mb-8">
+                                <p className="text-base md:text-lg text-[#a8a8a0] leading-relaxed max-w-3xl mb-8 whitespace-pre-line">
                                     <span className="text-[#4ade9a] font-medium">AI Insights:</span> {portfolioPulse.insight}
                                 </p>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -329,11 +341,16 @@ export default function PortfolioPage() {
                                         </thead>
                                         <tbody>
                                             {mergedPositions.map((item, i) => {
+                                                const hasPrice = item.ticker in livePrices;
                                                 const currentPrice = livePrices[item.ticker] ?? item.avgCost;
                                                 const marketValue = currentPrice * item.shares;
                                                 const unrealizedPnL = marketValue - item.costBasis;
                                                 const unrealizedPercent = item.costBasis > 0 ? (unrealizedPnL / item.costBasis) * 100 : 0;
                                                 const isPositive = unrealizedPnL >= 0;
+
+                                                const Skeleton = ({ className }: { className?: string }) => (
+                                                    <div className={`h-5 rounded bg-[#2a3d30]/60 animate-pulse ${className ?? ""}`} style={{ minWidth: 60 }} />
+                                                );
 
                                                 return (
                                                     <tr
@@ -347,10 +364,20 @@ export default function PortfolioPage() {
                                                         </td>
                                                         <td className="py-4 text-right font-medium pr-8">{item.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
                                                         <td className="py-4 text-right font-medium pr-8">${item.avgCost.toFixed(2)}</td>
-                                                        <td className="py-4 text-right font-medium pr-8">${currentPrice.toFixed(2)}</td>
-                                                        <td className="py-4 text-right font-bold pr-8">${marketValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                                        <td className={`py-4 text-right font-bold ${isPositive ? "text-[#4ade9a]" : "text-red-400"}`}>
-                                                            {isPositive ? "+" : ""}{unrealizedPnL.toFixed(2)} ({isPositive ? "+" : ""}{unrealizedPercent.toFixed(2)}%)
+                                                        <td className="py-4 text-right font-medium pr-8">
+                                                            {hasPrice ? `$${currentPrice.toFixed(2)}` : <Skeleton />}
+                                                        </td>
+                                                        <td className="py-4 text-right font-bold pr-8">
+                                                            {hasPrice ? `$${marketValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : <Skeleton />}
+                                                        </td>
+                                                        <td className="py-4 text-right font-bold">
+                                                            {hasPrice ? (
+                                                                <span className={isPositive ? "text-[#4ade9a]" : "text-red-400"}>
+                                                                    {isPositive ? "+" : ""}{unrealizedPnL.toFixed(2)} ({isPositive ? "+" : ""}{unrealizedPercent.toFixed(2)}%)
+                                                                </span>
+                                                            ) : (
+                                                                <Skeleton />
+                                                            )}
                                                         </td>
                                                     </tr>
                                                 );
@@ -413,7 +440,11 @@ export default function PortfolioPage() {
                                                 <span className="text-[#4ade9a] text-2xl leading-none mt-1">&mdash;</span>
                                                 <div>
                                                     <p><span className="text-white font-bold">{item.ticker}</span> ({item.name}): {item.movement}</p>
-                                                    <p className="text-[#a8a8a0] text-base mt-1">Drivers: {item.drivers}</p>
+                                                    <ul className="text-[#a8a8a0] text-base mt-1 list-disc list-inside space-y-0.5">
+                                                        {(Array.isArray(item.drivers) ? item.drivers : [item.drivers]).map((d, j) => (
+                                                            <li key={j}>{d}</li>
+                                                        ))}
+                                                    </ul>
                                                     <p className="text-[#a8a8a0] text-base mt-1">{item.interpretation}</p>
                                                 </div>
                                             </div>
@@ -441,7 +472,7 @@ export default function PortfolioPage() {
                         {/* Lookout Section */}
                         <section className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-8 shadow-xl">
                             <h2 className="text-2xl font-serif font-bold mb-6 flex items-center gap-3 text-[#f0ede8]" style={{ fontFamily: 'Playfair Display, serif' }}>
-                                Lookout
+                                Lookout👀 ({timeframe})
                             </h2>
                             {aiLoading.lookout ? (
                                 <div className="py-6 flex items-center text-[#a8a8a0]">
