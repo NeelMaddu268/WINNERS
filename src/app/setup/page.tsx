@@ -304,7 +304,7 @@ export default function SetupPage() {
                                         type="text" id="username" name="username" value={formData.username}
                                         onChange={handleChange} placeholder="cool_investor" minLength={3}
                                         className={`${inputCls} pl-8 ${usernameStatus === "taken" ? "border-red-500 focus:ring-red-500" :
-                                                usernameStatus === "available" ? "border-green-500 focus:ring-green-500" : ""
+                                            usernameStatus === "available" ? "border-green-500 focus:ring-green-500" : ""
                                             }`}
                                     />
                                 </div>
