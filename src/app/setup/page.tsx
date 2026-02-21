@@ -111,6 +111,11 @@ export default function SetupPage() {
                 displayName
             });
 
+            // Calculate timestamps for mock portfolio
+            const now = new Date();
+            const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
+            const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
             // 2. Save User Data to Firestore
             await setDoc(doc(db, "users", currentUser.uid), {
                 uid: currentUser.uid,
@@ -120,7 +125,26 @@ export default function SetupPage() {
                 username,
                 dob: formData.dob,
                 phoneNumber: userPhone,
-                createdAt: new Date().toISOString()
+                createdAt: now.toISOString(),
+                portfolio: [
+                    {
+                        ticker: "NVDA",
+                        name: "NVIDIA",
+                        shares: 10,
+                        priceAtPurchase: 150.00,
+                        costBasis: 1500.00,
+                        timestamp: twoWeeksAgo,
+                    },
+                    {
+                        ticker: "NVDA",
+                        name: "NVIDIA",
+                        shares: 2,
+                        priceAtPurchase: 200.00,
+                        costBasis: 400.00,
+                        timestamp: oneWeekAgo,
+                    }
+                ],
+                cashBalance: 100000.00 - 1900.00, // Paper trading balance minus mock investments
             });
 
             // 3. Navigate to home

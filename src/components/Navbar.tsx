@@ -12,11 +12,9 @@ export default function Navbar() {
     const tabRefs = useRef<(HTMLAnchorElement | null)[]>([]);
 
     const links = [
-        { href: "/home", label: "Invest" },
         { href: "/portfolio", label: "Portfolio" },
         { href: "/markets", label: "Markets" },
-        { href: "/resources", label: "Resources" },
-        { href: "/company", label: "Company" },
+        { href: "/social", label: "Feed" },
         { href: "/settings", label: "Settings" } // Added settings so they can log out
     ];
 
