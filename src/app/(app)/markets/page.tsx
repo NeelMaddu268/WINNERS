@@ -124,11 +124,11 @@ export default function MarketsPage() {
     const breadthTotal = breadth.up + breadth.down;
 
     // Discovery tab
-    const [discoveryTab, setDiscoveryTab] = useState<"gainers" | "losers" | "volume" | "gaps">("gainers");
+    const [discoveryTab, setDiscoveryTab] = useState<"gainers" | "losers" | "volume" | "movers">("gainers");
     const [gainers, setGainers] = useState<MoverItem[]>([]);
     const [losers, setLosers] = useState<MoverItem[]>([]);
     const [volumeLeaders, setVolumeLeaders] = useState<MoverItem[]>([]);
-    const [gaps, setGaps] = useState<MoverItem[]>([]);
+    const [movers, setMovers] = useState<MoverItem[]>([]);
     const [moversLoading, setMoversLoading] = useState(true);
 
     // Sector
@@ -148,7 +148,7 @@ export default function MarketsPage() {
     const fearGreedColor = fearGreed >= 55 ? "#00c805" : fearGreed >= 45 ? "#f59e0b" : "#ef4444";
 
     const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-    const discoveryItems = { gainers, losers, volume: volumeLeaders, gaps } as Record<string, MoverItem[]>;
+    const discoveryItems = { gainers, losers, volume: volumeLeaders, movers } as Record<string, MoverItem[]>;
     const showVol = discoveryTab === "volume";
 
     // ── Data loading ──────────────────────────────────────────
@@ -167,14 +167,14 @@ export default function MarketsPage() {
             setGainers(gl.gainers);
             setLosers(gl.losers);
             setVolumeLeaders(vol);
-            // Gaps: movers with |pct| > 2
+            // Movers: stocks with |pct| > 2
             const allMovers = [...gl.gainers, ...gl.losers, ...vol];
             const seen = new Set<string>();
             const gapList = allMovers.filter(m => {
                 if (Math.abs(m.changesPercentage) >= 2 && !seen.has(m.symbol)) { seen.add(m.symbol); return true; }
                 return false;
             }).sort((a, b) => Math.abs(b.changesPercentage) - Math.abs(a.changesPercentage));
-            setGaps(gapList);
+            setMovers(gapList);
             setMoversLoading(false);
         });
 
@@ -354,7 +354,7 @@ export default function MarketsPage() {
                 <h2 className="text-xs font-bold tracking-widest text-zinc-500 uppercase mb-3">High-Velocity Discovery</h2>
                 {/* Tab bar */}
                 <div className="flex gap-1 bg-[#111] border border-zinc-800 rounded-xl p-1 mb-3">
-                    {(["gainers", "losers", "volume", "gaps"] as const).map(tab => (
+                    {(["gainers", "losers", "volume", "movers"] as const).map(tab => (
                         <button
                             key={tab}
                             onClick={() => setDiscoveryTab(tab)}
@@ -363,7 +363,7 @@ export default function MarketsPage() {
                                 : "text-zinc-500 hover:text-zinc-300"
                                 }`}
                         >
-                            {tab === "gainers" ? "↑ Gainers" : tab === "losers" ? "↓ Losers" : tab === "volume" ? "⚡ Volume" : "⬡ Gaps"}
+                            {tab === "gainers" ? "↑ Gainers" : tab === "losers" ? "↓ Losers" : tab === "volume" ? "⚡ Volume" : "⬡ Movers"}
                         </button>
                     ))}
                 </div>
