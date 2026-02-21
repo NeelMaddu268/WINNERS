@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 import { recalculatePortfolioFromTransactions, type Transaction } from "@/app/actions/portfolio";
+import { BentoGrid } from "@/components/ui/bento-grid";
 import { TrendingUp } from "lucide-react";
 
 type PortfolioPosition = { ticker: string; name: string; shares: number; avgCost: number; costBasis: number; priceAtPurchase?: number };
@@ -29,7 +30,8 @@ export default function PortfolioPage() {
     useEffect(() => {
         const el = tabRefs.current[activeTabIdx];
         if (el) setPillPos({ left: el.offsetLeft, width: el.offsetWidth });
-    }, [activeTabIdx]);
+    }, [activeTabIdx, loading]);
+
 
     // Merge duplicate tickers: sum shares, weighted avg cost. Remove positions with 0 shares.
     const mergedPositions = useMemo(() => {
@@ -348,130 +350,127 @@ export default function PortfolioPage() {
 
             <div className="mt-8 border-t border-white/5 pt-12">
                 <h2 className="text-2xl font-serif font-bold mb-8 text-[#a8a8a0]" style={{ fontFamily: 'Playfair Display, serif' }}>Account Insights</h2>
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
 
-                    {/* Left Column: Narrative & Lookout */}
-                    <div className="lg:col-span-7 flex flex-col gap-10">
+                <BentoGrid className="lg:grid-rows-2 grid-cols-3 gap-4">
 
-                        {/* Narrative Report */}
-                        <section className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-[#4ade9a]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
-                            <h2 className="text-xl text-[#a8a8a0] font-medium mb-6">
-                                Your bi-monthly report looks great, here&apos;s what happened:
-                            </h2>
-                            <ul className="space-y-6 text-lg leading-relaxed relative z-10">
-                                <li className="flex gap-4 items-start">
-                                    <span className="text-[#4ade9a] text-2xl leading-none mt-1">&mdash;</span>
-                                    <p>Last week started out rough when <span className="text-white font-medium border-b border-white/20 pb-0.5">Apple earnings disappointed...</span></p>
-                                </li>
-                                <li className="flex gap-4 items-start">
-                                    <span className="text-[#4ade9a] text-2xl leading-none mt-1">&mdash;</span>
-                                    <div className="flex-1">
-                                        <p>Your bet on <span className="text-white font-bold bg-[#4ade9a]/10 px-2 py-0.5 rounded text-[#4ade9a]">WDC</span> 6-months ago paid off this week!</p>
-                                        <p className="text-[#a8a8a0] text-base mt-2">...unveiled new microchips</p>
-                                    </div>
-                                </li>
-                            </ul>
-                        </section>
-
-                        {/* Lookout Section */}
-                        <section className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-8 shadow-xl">
-                            <h2 className="text-2xl font-serif font-bold mb-6 flex items-center gap-3 text-[#f0ede8]" style={{ fontFamily: 'Playfair Display, serif' }}>
-                                Lookout <span className="text-2xl">👀</span>
-                            </h2>
-                            <ul className="space-y-5 text-lg">
-                                <li className="flex gap-4 items-start">
-                                    <span className="text-[#a8a8a0] text-2xl leading-none mt-1">&mdash;</span>
-                                    <p className="leading-relaxed"><span className="text-white font-medium">MRST</span> P/E ratio dropped, <span className="text-[#4ade9a]">look into buying in</span></p>
-                                </li>
-                                <li className="flex gap-4 items-center">
-                                    <span className="text-[#a8a8a0] text-2xl leading-none">&mdash;</span>
-                                    <div className="flex-1 flex items-center justify-between">
-                                        <p className="leading-relaxed text-[#a8a8a0]"><span className="text-white font-medium">Nvidia</span> teases sept 5. product reveal</p>
-                                        <div className="flex flex-col items-center gap-1 ml-4 bg-[#1a2a22] border border-[#2a3d30] px-3 py-2 rounded-xl">
-                                            <div className="relative w-10 h-10 flex items-center justify-center">
-                                                <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
-                                                    <circle cx="50" cy="50" r="40" stroke="rgba(255,255,255,0.05)" strokeWidth="12" fill="none" />
-                                                    <circle cx="50" cy="50" r="40" stroke="#4ade9a" strokeWidth="12" fill="none" strokeDasharray="251.2" strokeDashoffset="35.1" strokeLinecap="round" />
-                                                </svg>
-                                                <span className="absolute text-xs font-bold text-white">86%</span>
-                                            </div>
-                                            <span className="text-[10px] text-[#a8a8a0] font-medium uppercase tracking-wider">AI Hype</span>
-                                        </div>
-                                    </div>
-                                </li>
-                            </ul>
-                        </section>
-                    </div>
-
-                    {/* Right Column */}
-                    <div className="lg:col-span-5 flex flex-col gap-6">
-
-                        {/* Profitable Positions Gauge */}
-                        {(() => {
-                            const profitableCount = mergedPositions.filter(p => (livePrices[p.ticker] ?? p.avgCost) > p.avgCost).length;
-                            const total = mergedPositions.length;
-                            const pct = total > 0 ? Math.round((profitableCount / total) * 100) : 0;
-                            const circumference = 263.89;
-                            const dashOffset = circumference - (pct / 100) * circumference;
-                            return (
-                                <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-10 flex flex-col items-center justify-center shadow-xl relative">
-                                    <h3 className="text-xl font-medium text-[#a8a8a0] mb-8 text-center font-serif" style={{ fontFamily: 'Playfair Display, serif' }}>Profitable Positions</h3>
-                                    <div className="relative w-48 h-48 flex items-center justify-center">
-                                        <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90 filter drop-shadow-[0_0_15px_rgba(74,222,154,0.3)]">
-                                            <circle cx="50" cy="50" r="42" stroke="#1a2a22" strokeWidth="6" fill="none" />
-                                            <circle cx="50" cy="50" r="42" stroke={pct >= 50 ? "#4ade9a" : "#f87171"} strokeWidth="6" fill="none"
-                                                strokeDasharray={circumference} strokeDashoffset={dashOffset} strokeLinecap="round"
-                                                style={{ transition: "stroke-dashoffset 1s ease-out" }} />
-                                        </svg>
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                            <span className="text-6xl font-bold font-serif text-white tracking-tighter" style={{ fontFamily: 'Playfair Display, serif' }}>
-                                                {total === 0 ? "—" : pct}<span className="text-3xl" style={{ color: pct >= 50 ? "#4ade9a" : "#f87171" }}>{total > 0 ? "%" : ""}</span>
-                                            </span>
-                                            {total > 0 && <span className="text-xs text-[#a8a8a0] mt-1">{profitableCount} of {total} positions</span>}
-                                        </div>
-                                    </div>
+                    {/* ── Card 1: Bi-monthly Report  (col 1–2, row 1) ── */}
+                    <div className="group relative overflow-hidden rounded-2xl bg-[#111c18] border border-[#2a3d30]/50 shadow-2xl p-8 flex flex-col justify-between transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(74,222,154,0.08)] lg:col-start-1 lg:col-end-3 lg:row-start-1 lg:row-end-2">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-[#4ade9a]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 pointer-events-none" />
+                        <p className="text-xl text-[#a8a8a0] font-medium mb-6 relative z-10">
+                            Your bi-monthly report looks great, here&apos;s what happened:
+                        </p>
+                        <ul className="space-y-5 text-base leading-relaxed relative z-10 flex-1">
+                            <li className="flex gap-4 items-start">
+                                <span className="text-[#4ade9a] text-xl leading-none mt-0.5 shrink-0">—</span>
+                                <p>Last week started out rough when <span className="text-white font-medium border-b border-white/20 pb-0.5">Apple earnings disappointed...</span></p>
+                            </li>
+                            <li className="flex gap-4 items-start">
+                                <span className="text-[#4ade9a] text-xl leading-none mt-0.5 shrink-0">—</span>
+                                <div>
+                                    <p>Your bet on <span className="text-white font-bold bg-[#4ade9a]/10 px-2 py-0.5 rounded text-[#4ade9a]">WDC</span> 6-months ago paid off this week!</p>
+                                    <p className="text-[#a8a8a0] text-sm mt-1.5">...unveiled new microchips</p>
                                 </div>
-                            );
-                        })()}
-
-                        <div className="grid grid-cols-2 gap-6">
-                            {/* Beating Market */}
-                            <div className="bg-gradient-to-br from-[#4ade9a]/20 to-[#4ade9a]/5 border border-[#4ade9a]/30 rounded-3xl p-6 flex flex-col justify-between shadow-[0_0_30px_rgba(74,222,154,0.1)] relative overflow-hidden group">
-                                <div className="relative z-10">
-                                    <span className="text-5xl font-bold text-[#4ade9a] drop-shadow-[0_0_10px_rgba(74,222,154,0.5)] tracking-tighter block mb-2 group-hover:scale-105 transition-transform origin-left">+15%</span>
-                                    <span className="text-sm text-[#4ade9a] uppercase tracking-widest font-bold">This Week</span>
-                                </div>
-                                <div className="relative z-10 mt-6">
-                                    <h3 className="text-2xl font-serif font-bold leading-tight text-white mb-1" style={{ fontFamily: 'Playfair Display, serif' }}>Beating the<br />Market!</h3>
-                                    <div className="w-12 h-1 bg-[#4ade9a] rounded-full mt-4" />
-                                </div>
-                            </div>
-
-                            {/* Mini Chart */}
-                            <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-6 relative flex flex-col shadow-xl">
-                                <div className="absolute top-1/2 left-4 right-4 h-px bg-[#2a3d30] z-0" />
-                                <div className="absolute top-6 bottom-6 left-4 w-px bg-[#2a3d30] z-0" />
-                                <div className="flex-1 flex items-center justify-between gap-1 relative z-10 pl-4 py-4">
-                                    {candleData.map((candle, idx) => {
-                                        const maxHeight = 100, range = 80;
-                                        const wickHeight = (candle.high - candle.low) / range * maxHeight;
-                                        const bodyHeight = Math.max(Math.abs(candle.close - candle.open) / range * maxHeight, 2);
-                                        const isUp = candle.close >= candle.open;
-                                        return (
-                                            <div key={idx} className="flex-1 flex flex-col items-center relative h-full">
-                                                <div className="absolute top-1/2 -translate-y-1/2 h-full w-full flex flex-col justify-center items-center">
-                                                    <div className={`w-0.5 ${isUp ? 'bg-[#4ade9a]/60' : 'bg-red-400/60'} absolute`} style={{ height: `${wickHeight}px` }} />
-                                                    <div className={`w-1.5 md:w-2 ${isUp ? 'bg-[#4ade9a]' : 'bg-red-400'} absolute rounded-sm`} style={{ height: `${bodyHeight}px`, transform: `translateY(${(candle.open - candle.close) > 0 ? bodyHeight / 2 : -bodyHeight / 2}px)` }} />
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
+                            </li>
+                        </ul>
+                        {/* Hover CTA */}
+                        <div className="mt-6 relative z-10 flex items-center gap-2 text-[#4ade9a] text-sm font-semibold opacity-0 -translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+                            <TrendingUp className="w-4 h-4" />
+                            View full report
                         </div>
                     </div>
-                </div>
+
+                    {/* ── Card 2: Profitable Positions gauge  (col 3, row 1) ── */}
+                    {(() => {
+                        const profitableCount = mergedPositions.filter(p => (livePrices[p.ticker] ?? p.avgCost) > p.avgCost).length;
+                        const total = mergedPositions.length;
+                        const pct = total > 0 ? Math.round((profitableCount / total) * 100) : 0;
+                        const circumference = 263.89;
+                        const dashOffset = circumference - (pct / 100) * circumference;
+                        return (
+                            <div className="group relative overflow-hidden rounded-2xl bg-[#111c18] border border-[#2a3d30]/50 shadow-xl p-8 flex flex-col items-center justify-center transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(74,222,154,0.08)] lg:col-start-3 lg:col-end-4 lg:row-start-1 lg:row-end-2">
+                                <h3 className="text-lg font-medium text-[#a8a8a0] mb-6 text-center font-serif" style={{ fontFamily: 'Playfair Display, serif' }}>Profitable Positions</h3>
+                                <div className="relative w-40 h-40 flex items-center justify-center">
+                                    <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90 filter drop-shadow-[0_0_15px_rgba(74,222,154,0.3)]">
+                                        <circle cx="50" cy="50" r="42" stroke="#1a2a22" strokeWidth="6" fill="none" />
+                                        <circle cx="50" cy="50" r="42" stroke={pct >= 50 ? "#4ade9a" : "#f87171"} strokeWidth="6" fill="none"
+                                            strokeDasharray={circumference} strokeDashoffset={dashOffset} strokeLinecap="round"
+                                            style={{ transition: "stroke-dashoffset 1s ease-out" }} />
+                                    </svg>
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                        <span className="text-5xl font-bold text-white tracking-tighter" style={{ fontFamily: 'Playfair Display, serif' }}>
+                                            {total === 0 ? "—" : pct}<span className="text-2xl" style={{ color: pct >= 50 ? "#4ade9a" : "#f87171" }}>{total > 0 ? "%" : ""}</span>
+                                        </span>
+                                        {total > 0 && <span className="text-xs text-[#a8a8a0] mt-1">{profitableCount} of {total} positions</span>}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+                    {/* ── Card 3: Lookout  (col 1, row 2) ── */}
+                    <div className="group relative overflow-hidden rounded-2xl bg-[#111c18] border border-[#2a3d30]/50 shadow-xl p-8 flex flex-col justify-between transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(74,222,154,0.08)] lg:col-start-1 lg:col-end-2 lg:row-start-2 lg:row-end-3">
+                        <h2 className="text-2xl font-serif font-bold mb-5 flex items-center gap-2 text-[#f0ede8]" style={{ fontFamily: 'Playfair Display, serif' }}>
+                            Lookout <span>👀</span>
+                        </h2>
+                        <ul className="space-y-5 text-base flex-1">
+                            <li className="flex gap-3 items-start">
+                                <span className="text-[#a8a8a0] text-xl leading-none mt-0.5 shrink-0">—</span>
+                                <p className="leading-relaxed"><span className="text-white font-medium">MRST</span> P/E ratio dropped, <span className="text-[#4ade9a]">look into buying in</span></p>
+                            </li>
+                            <li className="flex gap-3 items-center">
+                                <span className="text-[#a8a8a0] text-xl leading-none shrink-0">—</span>
+                                <div className="flex-1 flex items-center justify-between gap-3">
+                                    <p className="leading-relaxed text-[#a8a8a0] text-sm"><span className="text-white font-medium">Nvidia</span> teases sept 5. product reveal</p>
+                                    <div className="flex flex-col items-center gap-1 shrink-0 bg-[#1a2a22] border border-[#2a3d30] px-2 py-1.5 rounded-xl">
+                                        <div className="relative w-9 h-9 flex items-center justify-center">
+                                            <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
+                                                <circle cx="50" cy="50" r="40" stroke="rgba(255,255,255,0.05)" strokeWidth="12" fill="none" />
+                                                <circle cx="50" cy="50" r="40" stroke="#4ade9a" strokeWidth="12" fill="none" strokeDasharray="251.2" strokeDashoffset="35.1" strokeLinecap="round" />
+                                            </svg>
+                                            <span className="absolute text-[10px] font-bold text-white">86%</span>
+                                        </div>
+                                        <span className="text-[9px] text-[#a8a8a0] font-medium uppercase tracking-wider">AI Hype</span>
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    {/* ── Card 4: Beating the Market  (col 2, row 2) ── */}
+                    <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#4ade9a]/20 to-[#4ade9a]/5 border border-[#4ade9a]/30 shadow-[0_0_30px_rgba(74,222,154,0.1)] p-6 flex flex-col justify-between transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_0_50px_rgba(74,222,154,0.18)] lg:col-start-2 lg:col-end-3 lg:row-start-2 lg:row-end-3">
+                        <div>
+                            <span className="text-5xl font-bold text-[#4ade9a] drop-shadow-[0_0_10px_rgba(74,222,154,0.5)] tracking-tighter block mb-1 group-hover:scale-105 transition-transform origin-left">+15%</span>
+                            <span className="text-xs text-[#4ade9a] uppercase tracking-widest font-bold">This Week</span>
+                        </div>
+                        <div>
+                            <h3 className="text-2xl font-serif font-bold leading-tight text-white" style={{ fontFamily: 'Playfair Display, serif' }}>Beating the<br />Market!</h3>
+                            <div className="w-10 h-1 bg-[#4ade9a] rounded-full mt-3" />
+                        </div>
+                    </div>
+
+                    {/* ── Card 5: Mini Candlestick Chart  (col 3, row 2) ── */}
+                    <div className="group relative overflow-hidden rounded-2xl bg-[#111c18] border border-[#2a3d30]/50 shadow-xl p-5 flex flex-col transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(74,222,154,0.08)] lg:col-start-3 lg:col-end-4 lg:row-start-2 lg:row-end-3">
+                        <div className="absolute top-1/2 left-4 right-4 h-px bg-[#2a3d30] z-0" />
+                        <div className="absolute top-6 bottom-6 left-4 w-px bg-[#2a3d30] z-0" />
+                        <div className="flex-1 flex items-center justify-between gap-1 relative z-10 pl-4 py-2">
+                            {candleData.map((candle, idx) => {
+                                const maxHeight = 100, range = 80;
+                                const wickHeight = (candle.high - candle.low) / range * maxHeight;
+                                const bodyHeight = Math.max(Math.abs(candle.close - candle.open) / range * maxHeight, 2);
+                                const isUp = candle.close >= candle.open;
+                                return (
+                                    <div key={idx} className="flex-1 flex flex-col items-center relative h-full">
+                                        <div className="absolute top-1/2 -translate-y-1/2 h-full w-full flex flex-col justify-center items-center">
+                                            <div className={`w-0.5 ${isUp ? 'bg-[#4ade9a]/60' : 'bg-red-400/60'} absolute`} style={{ height: `${wickHeight}px` }} />
+                                            <div className={`w-1.5 md:w-2 ${isUp ? 'bg-[#4ade9a]' : 'bg-red-400'} absolute rounded-sm`} style={{ height: `${bodyHeight}px`, transform: `translateY(${(candle.open - candle.close) > 0 ? bodyHeight / 2 : -bodyHeight / 2}px)` }} />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                </BentoGrid>
             </div>
 
         </div>
