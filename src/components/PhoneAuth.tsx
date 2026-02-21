@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
+import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult, getAdditionalUserInfo } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { useRouter } from "next/navigation";
 
 declare global {
     interface Window {
@@ -11,12 +12,12 @@ declare global {
 }
 
 export default function PhoneAuth() {
+    const router = useRouter();
     const [countryCode, setCountryCode] = useState("+1");
     const [phoneNumber, setPhoneNumber] = useState("");
     const [verificationCode, setVerificationCode] = useState("");
     const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -81,8 +82,21 @@ export default function PhoneAuth() {
         setLoading(true);
         setError(null);
         try {
-            await confirmationResult.confirm(verificationCode);
-            setSuccess(true);
+            const credential = await confirmationResult.confirm(verificationCode);
+
+            // Check if user is newly created or an existing user
+            const additionalInfo = getAdditionalUserInfo(credential);
+
+            // NOTE: For phone auth, isNewUser isn't always perfectly populated if the number was merged or tricky,
+            // but generally works perfectly for brand new sign ups!
+            if (additionalInfo?.isNewUser || !auth.currentUser?.displayName) {
+                // If new user (or they don't have a displayName set up), take them to setup
+                router.push("/setup");
+            } else {
+                // Existing completed user
+                router.push("/dashboard");
+            }
+
         } catch (err: any) {
             if (err.code === "auth/invalid-verification-code") {
                 setError("That code is incorrect. Please double check and try again.");
@@ -91,18 +105,11 @@ export default function PhoneAuth() {
             } else {
                 setError("Failed to verify code. Please try again.");
             }
-        } finally {
             setLoading(false);
         }
     };
 
-    if (success) {
-        return (
-            <div className="p-4 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded-md text-center font-medium">
-                Successfully signed in!
-            </div>
-        );
-    }
+
 
     return (
         <div className="w-full flex flex-col gap-4">
