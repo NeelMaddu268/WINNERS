@@ -1,6 +1,6 @@
 "use server";
 
-import { getBatchQuotes } from "./fmp";
+import { getBatchQuotes } from "./market";
 
 const TICKER_SYMBOLS = [
     { symbol: "BTC-USD", name: "Bitcoin" },
