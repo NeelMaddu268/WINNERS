@@ -16,6 +16,7 @@ export default function FriendsPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [searchError, setSearchError] = useState("");
 
     // Listen to current user doc for friends array
     useEffect(() => {
@@ -67,22 +68,43 @@ export default function FriendsPage() {
     const handleSearch = async () => {
         if (!searchQuery.trim() || !auth.currentUser) return;
         setIsSearching(true);
+        setSearchError("");
         // Extremely basic search: get all users and filter by name/handle on client. 
         // In prod this would require Algolia/Typesense or Firebase extension, but fine for prototype
         try {
+            console.log("Searching for:", searchQuery);
+            console.log("Current user:", auth.currentUser.uid);
             const usersRef = collection(db, "users");
             const querySnapshot = await getDocs(usersRef);
+            console.log("QuerySnapshot docs length:", querySnapshot.docs.length);
 
             const allUsers = querySnapshot.docs.map(d => ({ uid: d.id, ...(d.data() as any) }));
-            const filtered = allUsers.filter(u =>
-                u.uid !== auth.currentUser?.uid &&
-                (u.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    u.handle?.toLowerCase().includes(searchQuery.toLowerCase()))
-            );
+            console.log("allUsers parsed:", allUsers.length);
+
+            const filtered = allUsers.filter(u => {
+                const isNotSelf = u.uid !== auth.currentUser?.uid;
+
+                // Safe lowercasing
+                const uName = (u.displayName || "").toString().toLowerCase();
+                const uHandle = (u.handle || "").toString().toLowerCase();
+                const uUsername = (u.username || "").toString().toLowerCase();
+
+                // Allow searching with or without the @ symbol
+                const sQuery = searchQuery.toLowerCase().replace("@", "");
+
+                const matchesName = uName.includes(sQuery);
+                const matchesHandle = uHandle.includes(sQuery);
+                const matchesUsername = uUsername.includes(sQuery);
+
+                return isNotSelf && (matchesName || matchesHandle || matchesUsername);
+            });
+            console.log("Filtered length:", filtered.length);
+
             setSearchResults(filtered);
             setIsSearching(false);
-        } catch (e) {
-            console.error(e);
+        } catch (e: any) {
+            console.error("Search failed:", e);
+            setSearchError(e.message || "An error occurred while searching.");
             setIsSearching(false);
         }
     };
@@ -187,8 +209,8 @@ export default function FriendsPage() {
                                         {(f.displayName || "A").substring(0, 1).toUpperCase()}
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="font-bold">{f.displayName || "Anonymous"}</span>
-                                        <span className="text-sm text-zinc-500">{f.handle || "@user"}</span>
+                                        <span className="font-bold">{f.displayName || f.username || "Anonymous"}</span>
+                                        <span className="text-sm text-zinc-500">{f.handle || (f.username ? `@${f.username}` : "@user")}</span>
                                     </div>
                                 </div>
                                 <span className="text-sm text-zinc-400 font-medium bg-zinc-800 px-3 py-1 rounded-full">View Profile</span>
@@ -215,8 +237,8 @@ export default function FriendsPage() {
                                                 {(req.sender?.displayName || "A").substring(0, 1).toUpperCase()}
                                             </div>
                                             <div className="flex flex-col cursor-pointer">
-                                                <span className="font-bold">{req.sender?.displayName || "Anonymous"}</span>
-                                                <span className="text-sm text-zinc-500">{req.sender?.handle || "@user"}</span>
+                                                <span className="font-bold">{req.sender?.displayName || req.sender?.username || "Anonymous"}</span>
+                                                <span className="text-sm text-zinc-500">{req.sender?.handle || (req.sender?.username ? `@${req.sender?.username}` : "@user")}</span>
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
@@ -248,8 +270,8 @@ export default function FriendsPage() {
                                                 {(req.receiver?.displayName || "A").substring(0, 1).toUpperCase()}
                                             </div>
                                             <div className="flex flex-col">
-                                                <span className="font-bold">{req.receiver?.displayName || "Anonymous"}</span>
-                                                <span className="text-sm text-zinc-500">{req.receiver?.handle || "@user"}</span>
+                                                <span className="font-bold">{req.receiver?.displayName || req.receiver?.username || "Anonymous"}</span>
+                                                <span className="text-sm text-zinc-500">{req.receiver?.handle || (req.receiver?.username ? `@${req.receiver?.username}` : "@user")}</span>
                                             </div>
                                         </div>
                                         <span className="text-xs font-bold text-zinc-500 bg-zinc-800 px-3 py-1 rounded-full">Pending</span>
@@ -278,6 +300,12 @@ export default function FriendsPage() {
                         </button>
                     </div>
 
+                    {searchError && (
+                        <div className="bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-3 rounded-lg text-sm break-all">
+                            <strong>Error:</strong> {searchError}
+                        </div>
+                    )}
+
                     <div className="flex flex-col gap-3">
                         {searchResults.length > 0 && searchResults.map(user => {
                             const isFriend = friendsList.some(f => f.uid === user.uid);
@@ -290,8 +318,8 @@ export default function FriendsPage() {
                                             {(user.displayName || "A").substring(0, 1).toUpperCase()}
                                         </div>
                                         <div className="flex flex-col">
-                                            <span className="font-bold">{user.displayName || "Anonymous"}</span>
-                                            <span className="text-sm text-zinc-500">{user.handle || "@user"}</span>
+                                            <span className="font-bold">{user.displayName || user.username || "Anonymous"}</span>
+                                            <span className="text-sm text-zinc-500">{user.handle || (user.username ? `@${user.username}` : "@user")}</span>
                                         </div>
                                     </div>
 

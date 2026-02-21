@@ -145,11 +145,11 @@ export default function ProfilePage({ params }: { params: Promise<{ uid: string 
             {/* Header / Profile Info */}
             <div className="bg-[#111] border border-zinc-800 rounded-3xl p-8 flex flex-col md:flex-row items-center md:items-start gap-6 relative overflow-hidden">
                 <div className="w-24 h-24 rounded-full bg-blue-600 flex items-center justify-center font-bold text-4xl shrink-0">
-                    {(targetUser.displayName || "A").substring(0, 1).toUpperCase()}
+                    {(targetUser.displayName || targetUser.username || "A").substring(0, 1).toUpperCase()}
                 </div>
                 <div className="flex flex-col items-center md:items-start flex-1 text-center md:text-left">
-                    <h1 className="text-3xl font-bold">{targetUser.displayName || "Anonymous"}</h1>
-                    <span className="text-zinc-500 mt-1">{targetUser.handle || `@user_${targetUid.substring(0, 6)}`}</span>
+                    <h1 className="text-3xl font-bold">{targetUser.displayName || targetUser.username || "Anonymous"}</h1>
+                    <span className="text-zinc-500 mt-1">{targetUser.handle || (targetUser.username ? `@${targetUser.username}` : `@user_${targetUid.substring(0, 6)}`)}</span>
 
                     <div className="flex items-center gap-3 mt-4">
                         {isSelf ? (
