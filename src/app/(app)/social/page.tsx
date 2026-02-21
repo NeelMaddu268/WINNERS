@@ -2,12 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { auth, db } from "@/lib/firebase";
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, arrayUnion, arrayRemove, addDoc, getDocs } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, arrayUnion, arrayRemove, addDoc, getDocs, getDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
+import { useRouter } from "next/navigation";
 
 export default function SocialPage() {
+    const router = useRouter();
     const [isFriendsMenuOpen, setIsFriendsMenuOpen] = useState(false);
     const [selectedFriend, setSelectedFriend] = useState<any | null>(null);
+    const [selectedUserDoc, setSelectedUserDoc] = useState<any | null>(null);
+    const [selectedUserHoldings, setSelectedUserHoldings] = useState<any[]>([]);
+    const [isFriend, setIsFriend] = useState(false);
+    const [isPublic, setIsPublic] = useState(false);
 
     const [activities, setActivities] = useState<any[]>([]);
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -46,6 +52,42 @@ export default function SocialPage() {
             if (unsubUser) unsubUser();
         };
     }, []);
+
+    // Load full details for mini-profile
+    useEffect(() => {
+        if (!selectedFriend || !selectedFriend.uid) return;
+
+        const loadSelectedUser = async () => {
+            const uDoc = await getDoc(doc(db, "users", selectedFriend.uid));
+            if (uDoc.exists()) {
+                const data = uDoc.data();
+                setSelectedUserDoc(data);
+                setIsPublic(data.isPublic === true);
+                setIsFriend(currentUser && myFriends.includes(selectedFriend.uid));
+
+                // Compute holdings for the top 3 display
+                if (data.transactionHistory) {
+                    const byTicker = new Map<string, number>();
+                    for (const tx of data.transactionHistory) {
+                        const current = byTicker.get(tx.ticker) || 0;
+                        if (tx.type === "BUY") {
+                            byTicker.set(tx.ticker, current + tx.shares);
+                        } else if (tx.type === "SELL") {
+                            byTicker.set(tx.ticker, current - tx.shares);
+                        }
+                    }
+                    const activeHoldings = Array.from(byTicker.entries())
+                        .filter(([, shares]) => shares > 0)
+                        .map(([ticker]) => ticker);
+                    setSelectedUserHoldings(activeHoldings);
+                } else {
+                    setSelectedUserHoldings([]);
+                }
+            }
+        };
+
+        loadSelectedUser();
+    }, [selectedFriend, currentUser, myFriends]);
 
     useEffect(() => {
         const feedRef = collection(db, "global_feed");
@@ -369,22 +411,27 @@ export default function SocialPage() {
 
                             {/* Correct margin to clear the absolute positioned avatar properly (pt-20 gives ~5rem clearance) */}
                             <div className="pt-20">
-                                <h3 className="text-3xl font-serif font-bold text-white tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>{selectedFriend.name}</h3>
-                                <p className="text-[#00c805] font-semibold tracking-wide flex items-center gap-1.5 mt-1">
-                                    {selectedFriend.handle}
-                                    {selectedFriend.status === "Online" && <span className="w-2h-2 rounded-full bg-[#00c805] shadow-[0_0_10px_#00c805] animate-pulse relative inline-block h-2 w-2"></span>}
-                                </p>
+                                <h3 className="text-3xl font-serif font-bold text-white tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>{selectedUserDoc?.displayName || selectedUserDoc?.username || selectedFriend.name}</h3>
+                                <div className="flex items-center gap-3 mt-1">
+                                    <p className="text-[#00c805] font-semibold tracking-wide flex items-center gap-1.5">
+                                        {selectedUserDoc?.handle || (selectedUserDoc?.username ? `@${selectedUserDoc.username}` : selectedFriend.handle)}
+                                        {selectedFriend.status === "Online" && <span className="w-2 h-2 rounded-full bg-[#00c805] shadow-[0_0_10px_#00c805] animate-pulse relative inline-block"></span>}
+                                    </p>
+                                    {isFriend && <span className="text-xs bg-[#00c805]/20 text-[#00c805] px-2 py-0.5 rounded-full font-bold">Friend</span>}
+                                    {!isFriend && isPublic && <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full font-bold">Public</span>}
+                                    {!isFriend && !isPublic && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full font-bold">Private</span>}
+                                </div>
                             </div>
 
                             {/* Stats */}
                             <div className="mt-8 grid grid-cols-2 gap-4">
                                 <div className="bg-gradient-to-br from-[#1a2a22] to-[#111c18] border border-[#2a3d30]/60 rounded-2xl p-4 text-center shadow-inner hover:border-[#4ade9a]/30 transition-colors">
-                                    <div className="text-3xl font-bold text-white drop-shadow-md">12</div>
-                                    <div className="text-xs text-[#4ade9a] font-bold uppercase tracking-widest mt-1 opacity-80">Following</div>
+                                    <div className="text-3xl font-bold text-white drop-shadow-md">{selectedUserDoc?.friends?.length || 0}</div>
+                                    <div className="text-xs text-[#4ade9a] font-bold uppercase tracking-widest mt-1 opacity-80">Friends</div>
                                 </div>
                                 <div className="bg-gradient-to-br from-[#1a2a22] to-[#111c18] border border-[#2a3d30]/60 rounded-2xl p-4 text-center shadow-inner hover:border-[#4ade9a]/30 transition-colors">
-                                    <div className="text-3xl font-bold text-white drop-shadow-md">48</div>
-                                    <div className="text-xs text-[#4ade9a] font-bold uppercase tracking-widest mt-1 opacity-80">Followers</div>
+                                    <div className="text-3xl font-bold text-white drop-shadow-md">{selectedUserHoldings.length || 0}</div>
+                                    <div className="text-xs text-[#4ade9a] font-bold uppercase tracking-widest mt-1 opacity-80">Assets</div>
                                 </div>
                             </div>
 
@@ -394,15 +441,23 @@ export default function SocialPage() {
                                     Top Holdings <span className="text-[#00c805]">★</span>
                                 </h4>
                                 <div className="flex flex-wrap gap-2.5">
-                                    <span className="bg-[#00c805]/10 border border-[#00c805]/30 text-[#00c805] shadow-[0_0_10px_rgba(0,200,5,0.05)] px-4 py-2 rounded-xl text-sm font-bold tracking-wide">NVDA</span>
-                                    <span className="bg-blue-500/10 border border-blue-500/30 text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.05)] px-4 py-2 rounded-xl text-sm font-bold tracking-wide">MSFT</span>
-                                    <span className="bg-white/5 border border-white/20 text-white px-4 py-2 rounded-xl text-sm font-bold tracking-wide">AAPL</span>
+                                    {(!isFriend && !isPublic) ? (
+                                        <div className="text-sm text-zinc-500 italic">Portfolio is private 🔒</div>
+                                    ) : selectedUserHoldings.length > 0 ? (
+                                        selectedUserHoldings.slice(0, 3).map((ticker, idx) => (
+                                            <span key={ticker} className={`${idx === 0 ? 'bg-[#00c805]/10 border-[#00c805]/30 text-[#00c805] shadow-[0_0_10px_rgba(0,200,5,0.05)]' : (idx === 1 ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.05)]' : 'bg-white/5 border-white/20 text-white')} border px-4 py-2 rounded-xl text-sm font-bold tracking-wide`}>
+                                                {ticker}
+                                            </span>
+                                        ))
+                                    ) : (
+                                        <div className="text-sm text-zinc-500 italic">No current holdings</div>
+                                    )}
                                 </div>
                             </div>
 
                             {/* Action Button */}
-                            <button className="w-full mt-10 py-4 bg-gradient-to-r from-[#1a2a22] to-[#111c18] hover:from-[#2a3d30] hover:to-[#1a2a22] text-white border border-[#4ade9a]/30 rounded-2xl font-bold tracking-wide transition-all shadow-[0_5px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_0_20px_rgba(74,222,154,0.15)] group relative overflow-hidden">
-                                <span className="relative z-10">View Full Portfolio</span>
+                            <button onClick={() => router.push(`/profile/${selectedFriend.uid}`)} className="w-full mt-10 py-4 bg-gradient-to-r from-[#1a2a22] to-[#111c18] hover:from-[#2a3d30] hover:to-[#1a2a22] text-white border border-[#4ade9a]/30 rounded-2xl font-bold tracking-wide transition-all shadow-[0_5px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_0_20px_rgba(74,222,154,0.15)] group relative overflow-hidden">
+                                <span className="relative z-10">View Full Profile</span>
                                 <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
                             </button>
                         </div>
