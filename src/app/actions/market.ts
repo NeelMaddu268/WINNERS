@@ -318,6 +318,28 @@ export async function getEconomicCalendar(): Promise<{ time: string; event: stri
     ];
 }
 
+export async function getFearGreedIndex(): Promise<{ score: number; rating: string } | null> {
+    try {
+        const cacheKey = "fear_greed";
+        if (cache[cacheKey] && cache[cacheKey].expires > Date.now()) {
+            return cache[cacheKey].data;
+        }
+        const res = await fetch("https://production.dataviz.cnn.io/index/fearandgreed/graphdata", {
+            headers: { "User-Agent": "Mozilla/5.0" },
+            next: { revalidate: 3600 },
+        });
+        if (!res.ok) return null;
+        const json = await res.json();
+        const fg = json?.fear_and_greed;
+        if (!fg?.score) return null;
+        const data = { score: Math.round(fg.score), rating: fg.rating || "neutral" };
+        cache[cacheKey] = { data, expires: Date.now() + CACHE_TTL_MS };
+        return data;
+    } catch {
+        return null;
+    }
+}
+
 export async function getBatchQuotes(symbols: string[], skipCache?: boolean) {
     try {
         const symbolString = symbols.sort().join(",");

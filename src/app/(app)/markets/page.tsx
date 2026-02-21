@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { searchTickers, getMarketIndex, getTopGainersLosers, getVolumeLeaders, getSectorPerformance, getEarningsCalendar, getEconomicCalendar, getBatchQuotes, getMarketBreadth } from "@/app/actions/market";
+import { searchTickers, getMarketIndex, getTopGainersLosers, getVolumeLeaders, getSectorPerformance, getEarningsCalendar, getEconomicCalendar, getBatchQuotes, getMarketBreadth, getFearGreedIndex } from "@/app/actions/market";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
@@ -157,10 +157,14 @@ export default function MarketsPage() {
     // Watchlist
     const [watchlistData, setWatchlistData] = useState<{ symbol: string; price: number; pct: number; pos: boolean }[]>([]);
 
-    // Fear & Greed (heuristic)
-    const fearGreed = Math.min(100, Math.max(0, Math.round(50 + (breadth.up - breadth.down) / breadthTotal * 80)));
-    const fearGreedLabel = fearGreed >= 75 ? "Extreme Greed" : fearGreed >= 55 ? "Greed" : fearGreed >= 45 ? "Neutral" : fearGreed >= 25 ? "Fear" : "Extreme Fear";
-    const fearGreedColor = fearGreed >= 55 ? "#4ade9a" : fearGreed >= 45 ? "#f59e0b" : "#ef4444";
+    // Fear & Greed (CNN API; fallback to heuristic if unavailable)
+    const [fearGreedData, setFearGreedData] = useState<{ score: number; rating: string } | null>(null);
+    const fearGreedHeuristic = Math.min(100, Math.max(0, Math.round(50 + (breadth.up - breadth.down) / breadthTotal * 80)));
+    const fearGreed = fearGreedData?.score ?? fearGreedHeuristic;
+    const fearGreedLabel = fearGreedData?.rating
+        ? fearGreedData.rating.replace(/\b\w/g, (c) => c.toUpperCase())
+        : fearGreed >= 75 ? "Extreme Greed" : fearGreed >= 55 ? "Greed" : fearGreed >= 45 ? "Neutral" : fearGreed >= 25 ? "Fear" : "Extreme Fear";
+    const fearGreedColor = fearGreed >= 55 ? "#00c805" : fearGreed >= 45 ? "#f59e0b" : "#ef4444";
 
     const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
     const discoveryItems = { gainers, losers, volume: volumeLeaders, movers } as Record<string, MoverItem[]>;
@@ -231,6 +235,8 @@ export default function MarketsPage() {
             loadWatchlist();
         });
 
+        // Fear & Greed (CNN API)
+        getFearGreedIndex().then(setFearGreedData);
         // initial load if auth is already resolved, though onAuthStateChanged fires immediately anyway.
         if (auth.currentUser) {
             loadWatchlist();

@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, collection, addDoc } from "firebase/firestore";
-import { getInvestorHypeScore } from "@/app/actions/gemini";
+import { getInvestorHypeScore, getTickerOverview, type TickerOverviewResult } from "@/app/actions/gemini";
 import { getQuote, getChartData, getPriceForDate } from "@/app/actions/market";
 import { recalculatePortfolioFromTransactions } from "@/app/actions/portfolio";
 
@@ -38,7 +38,9 @@ export default function TickerPage() {
     const [chartDateLabels, setChartDateLabels] = useState<string[]>([]);
     const [chartStats, setChartStats] = useState({ open: "-", high: "-", vol: "-", range: "-" });
     const [hypeData, setHypeData] = useState<{ score: number | null; points: string[] } | null>(null);
+    const [tickerOverview, setTickerOverview] = useState<TickerOverviewResult | null>(null);
     const [isHypeLoading, setIsHypeLoading] = useState(false);
+    const [isOverviewLoading, setIsOverviewLoading] = useState(false);
     const [isSharingPosition, setIsSharingPosition] = useState(false);
     const [sharePositionSuccess, setSharePositionSuccess] = useState(false);
 
@@ -98,10 +100,17 @@ export default function TickerPage() {
     useEffect(() => {
         if (!tickerData) return;
         setIsHypeLoading(true);
+        setIsOverviewLoading(true);
         setHypeData(null);
+        setTickerOverview(null);
         getInvestorHypeScore(tickerData.ticker, tickerData.name).then((data) => {
             setHypeData(data);
             setIsHypeLoading(false);
+        });
+        const tf = { "1W": "1 wk", "1M": "1 mo", "3M": "3 mo", YTD: "YTD", "1Y": "1 yr", ALL: "1 yr" }[activeTimeframe] || "1 mo";
+        getTickerOverview(tickerData.ticker, tickerData.name, tf).then((data) => {
+            setTickerOverview(data);
+            setIsOverviewLoading(false);
         });
 
         const cacheRef = doc(db, "market_cache", `${tickerData.ticker}_daily`);
@@ -114,7 +123,7 @@ export default function TickerPage() {
                 }
             })
             .catch(() => getChartData(tickerData.ticker).then((data) => setFullChartData(data)));
-    }, [tickerData]);
+    }, [tickerData, activeTimeframe]);
 
     useEffect(() => {
         if (!fullChartData || fullChartData.length === 0) return;
@@ -637,24 +646,54 @@ export default function TickerPage() {
                 <div className="mt-12 mb-8">
                     <div className="bg-gradient-to-br from-[#1a1025] to-[#110c18] border border-purple-500/30 rounded-3xl p-6 shadow-xl relative overflow-hidden min-h-[250px]">
                         <h2 className="text-2xl font-serif font-bold text-purple-100 mb-6 flex items-center gap-2">
-                            <span className="text-purple-400">✨</span> AI Rundown
+                            <span className="text-purple-400">✨</span> AI Overview
                         </h2>
-                        {isHypeLoading ? (
+                        {(isHypeLoading || isOverviewLoading) ? (
                             <div className="flex flex-col items-center justify-center py-8 opacity-70">
                                 <div className="w-8 h-8 rounded-full border-t-2 border-r-2 border-purple-500 animate-spin mb-4" />
                                 <p className="text-purple-300 text-sm animate-pulse">Analyzing web signals & sentiment...</p>
                             </div>
-                        ) : hypeData ? (
+                        ) : (tickerOverview || hypeData) ? (
                             <div className="flex flex-col gap-6 animate-in fade-in duration-500">
-                                <div className="flex flex-col md:flex-row gap-6 items-center">
-                                    <div className="flex flex-col items-center p-6 bg-black/40 border border-purple-500/20 rounded-2xl w-full md:w-1/3 shadow-inner">
+                                {tickerOverview && (
+                                    <div className="space-y-4">
+                                        <div>
+                                            <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">Price Behavior</h3>
+                                            <p className="text-sm text-zinc-200 leading-relaxed">{tickerOverview.priceBehavior}</p>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">Sentiment</h3>
+                                            <p className="text-sm text-zinc-200 leading-relaxed">{tickerOverview.sentiment}</p>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">Fundamental Context</h3>
+                                            <p className="text-sm text-zinc-200 leading-relaxed">{tickerOverview.fundamentalContext}</p>
+                                        </div>
+                                        {tickerOverview.risks?.length > 0 && (
+                                            <div>
+                                                <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">Key Risks</h3>
+                                                <ul className="space-y-1 text-sm text-zinc-200">
+                                                    {tickerOverview.risks.map((r, i) => (
+                                                        <li key={i}>• {r}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                        <div>
+                                            <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">Outlook</h3>
+                                            <p className="text-sm text-zinc-200 leading-relaxed">{tickerOverview.outlook}</p>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="flex flex-col md:flex-row gap-6 items-start pt-4 border-t border-purple-500/20">
+                                    <div className="flex flex-col items-center p-6 bg-black/40 border border-purple-500/20 rounded-2xl w-full md:w-1/3 shadow-inner shrink-0">
                                         <span className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-2 text-center">Investor Hype Score</span>
                                         <div className="relative flex items-center justify-center w-24 h-24">
                                             <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                                                 <path className="text-white/5" strokeDasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" stroke="currentColor" strokeWidth="3" fill="none" />
                                                 <path
-                                                    className={`transition-all duration-1000 ease-out ${hypeData.score && hypeData.score > 60 ? "text-red-500" : hypeData.score && hypeData.score > 40 ? "text-yellow-500" : "text-blue-500"}`}
-                                                    strokeDasharray={`${hypeData.score || 0}, 100`}
+                                                    className={`transition-all duration-1000 ease-out ${(hypeData?.score ?? tickerOverview?.hypeScore ?? 0) > 60 ? "text-red-500" : (hypeData?.score ?? tickerOverview?.hypeScore ?? 0) > 40 ? "text-yellow-500" : "text-blue-500"}`}
+                                                    strokeDasharray={`${hypeData?.score ?? tickerOverview?.hypeScore ?? 0}, 100`}
                                                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                                                     stroke="currentColor"
                                                     strokeWidth="3"
@@ -662,28 +701,32 @@ export default function TickerPage() {
                                                 />
                                             </svg>
                                             <div className="absolute flex items-center justify-center flex-col">
-                                                <span className="text-3xl font-bold text-white leading-none">{hypeData.score || "?"}</span>
+                                                <span className="text-3xl font-bold text-white leading-none">{hypeData?.score ?? tickerOverview?.hypeScore ?? "?"}</span>
                                             </div>
                                         </div>
                                         <span
-                                            className={`text-sm font-bold mt-4 ${hypeData.score && hypeData.score > 80 ? "text-red-400" : hypeData.score && hypeData.score > 60 ? "text-yellow-400" : "text-blue-400"
-                                                }`}
+                                            className={`text-sm font-bold mt-4 ${
+                                                (hypeData?.score ?? tickerOverview?.hypeScore ?? 0) > 80 ? "text-red-400" : (hypeData?.score ?? tickerOverview?.hypeScore ?? 0) > 60 ? "text-yellow-400" : "text-blue-400"
+                                            }`}
                                         >
-                                            {hypeData.score && hypeData.score > 80 ? "Extreme / Meme" : hypeData.score && hypeData.score > 60 ? "High Hype" : hypeData.score && hypeData.score > 40 ? "Moderate Hype" : "Low Hype"}
+                                            {(hypeData?.score ?? tickerOverview?.hypeScore ?? 0) > 80 ? "Extreme / Meme" : (hypeData?.score ?? tickerOverview?.hypeScore ?? 0) > 60 ? "High Hype" : (hypeData?.score ?? tickerOverview?.hypeScore ?? 0) > 40 ? "Moderate Hype" : "Low Hype"}
                                         </span>
                                     </div>
-                                    <div className="flex flex-col gap-4 w-full md:w-2/3">
-                                        {hypeData.points.map((point, idx) => (
-                                            <div key={idx} className="bg-black/40 border border-white/5 p-4 rounded-2xl flex items-start gap-3">
-                                                <span className="text-purple-400 mt-0.5">•</span>
-                                                <p className="text-sm text-zinc-200 leading-relaxed font-medium">{point}</p>
-                                            </div>
-                                        ))}
-                                    </div>
+                                    {hypeData?.points && hypeData.points.length > 0 && (
+                                        <div className="flex flex-col gap-4 flex-1">
+                                            <span className="text-xs font-bold text-purple-300 uppercase tracking-wider">Hype Rationale</span>
+                                            {hypeData.points.map((point, idx) => (
+                                                <div key={idx} className="bg-black/40 border border-white/5 p-4 rounded-2xl flex items-start gap-3">
+                                                    <span className="text-purple-400 mt-0.5">•</span>
+                                                    <p className="text-sm text-zinc-200 leading-relaxed font-medium">{point}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ) : (
-                            <div className="text-center py-8 text-zinc-500 text-sm">No analysis available.</div>
+                            <div className="text-center py-8 text-zinc-500 text-sm">Add GEMINI_API_KEY to .env.local to enable AI analysis.</div>
                         )}
                     </div>
                 </div>
