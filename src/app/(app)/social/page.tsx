@@ -118,7 +118,7 @@ export default function SocialPage() {
     const handleAddComment = async (activityId: string) => {
         if (!newCommentText.trim() || !currentUser) return;
         const ref = doc(db, "global_feed", activityId);
-        const username = currentUser.displayName || "Anonymous";
+        const username = currentUser.displayName || currentUser.username || "Anonymous";
 
         const newComment = {
             id: Date.now().toString(),
