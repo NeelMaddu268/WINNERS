@@ -170,7 +170,7 @@ export default function ProfilePage({ params }: { params: Promise<{ uid: string 
     };
 
     return (
-        <div className="flex flex-col gap-8 w-full max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans text-white pb-24 md:pb-8">
+        <div className="flex flex-col gap-8 w-full max-w-4xl mx-auto animate-in fade-in duration-500 font-sans text-white pb-24 md:pb-8 px-4 sm:px-6 lg:px-8">
             {/* Header / Profile Info */}
             <div className="bg-[#111] border border-zinc-800 rounded-3xl p-8 flex flex-col md:flex-row items-center md:items-start gap-6 relative overflow-hidden">
                 <div className="w-24 h-24 rounded-full bg-blue-600 flex items-center justify-center font-bold text-4xl shrink-0">

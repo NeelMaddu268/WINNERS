@@ -1,6 +1,6 @@
 export default function HomePage() {
     return (
-        <div className="flex flex-col gap-6 w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="flex flex-col gap-6 w-full animate-in fade-in duration-500">
             <header>
                 <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Portfolio</h1>
                 <p className="text-zinc-600 dark:text-zinc-400 mt-1">Here is how your stocks are performing today.</p>

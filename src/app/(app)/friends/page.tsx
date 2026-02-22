@@ -186,12 +186,12 @@ export default function FriendsPage() {
     };
 
     return (
-        <div className="flex flex-col w-full max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans text-white pb-24 md:pb-8">
-            <header className="px-4 mt-2 mb-6">
-                <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Friends</h1>
+        <div className="flex flex-col w-full max-w-4xl mx-auto animate-in fade-in duration-500 font-sans text-white pb-24 md:pb-8 px-4 sm:px-6 lg:px-8">
+            <header className="mb-6 border-b border-[#2a3d30]/50 pb-6">
+                <h1 className="font-page-title text-white">Friends</h1>
             </header>
 
-            <div className="flex px-4 gap-2 mb-6">
+            <div className="flex gap-2 mb-6">
                 <button
                     onClick={() => setActiveTab("friends")}
                     className={`px-5 py-2.5 rounded-full text-base font-bold transition ${activeTab === "friends" ? "bg-white text-black" : "bg-zinc-800 text-zinc-400 hover:text-white"}`}
@@ -218,7 +218,7 @@ export default function FriendsPage() {
             </div>
 
             {activeTab === "friends" && (
-                <div className="px-4 flex flex-col gap-3">
+                <div className="flex flex-col gap-3">
                     {friendsList.length === 0 ? (
                         <div className="text-center py-12 text-zinc-500 text-base bg-[#111] rounded-2xl border border-zinc-800">
                             You don't have any friends yet. Let's fix that!
@@ -255,7 +255,7 @@ export default function FriendsPage() {
             )}
 
             {activeTab === "requests" && (
-                <div className="px-4 flex flex-col gap-6">
+                <div className="flex flex-col gap-6">
                     <div>
                         <h2 className="text-base font-bold tracking-widest text-zinc-500 uppercase mb-3 px-2">Incoming Requests</h2>
                         <div className="flex flex-col gap-3">
@@ -318,7 +318,7 @@ export default function FriendsPage() {
             )}
 
             {activeTab === "search" && (
-                <div className="px-4 flex flex-col gap-4">
+                <div className="flex flex-col gap-4">
                     <div className="relative flex items-center bg-[#1a1a1a] border border-zinc-600/60 rounded-xl py-3.5 pl-4 pr-3 gap-3 transition-all focus-within:border-zinc-400 focus-within:ring-2 focus-within:ring-zinc-500/30">
                         <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         <input

@@ -121,11 +121,10 @@ export default function SettingsPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#0d1a14]">
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-                <div className="flex flex-col gap-6 w-full animate-in fade-in slide-in-from-bottom-4 duration-500 text-[#f0ede8]">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
+                <div className="flex flex-col gap-6 w-full animate-in fade-in duration-500 text-[#f0ede8]">
                     <header className="border-b border-[#2a3d30]/50 pb-6">
-                        <h1 className="text-4xl md:text-5xl font-bold tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>Settings</h1>
+                        <h1 className="font-page-title text-[#f0ede8]">Settings</h1>
                         <p className="text-[#a8a8a0] mt-1 text-base">Manage your account preferences and profile.</p>
                     </header>
 
@@ -257,7 +256,6 @@ export default function SettingsPage() {
                         </div>
                     )}
                 </div>
-            </div>
         </div>
     );
 }
