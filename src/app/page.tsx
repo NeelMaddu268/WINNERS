@@ -5,10 +5,10 @@ import { useState, useEffect, useRef, ReactNode } from 'react';
 import { getTickerData } from './actions/ticker';
 
 const faqs = [
-    { q: 'How do I get started?', a: 'Sign up in minutes, verify your identity, fund your account, and start investing right away.' },
-    { q: 'What are the fees?', a: 'Zero commission on stocks and ETFs. Competitive rates on options and margin trading.' },
-    { q: 'Is my money safe?', a: 'Your assets are protected with bank-level encryption and SIPC insurance up to $500,000.' },
-    { q: 'Can I trade crypto?', a: 'Yes. Buy, sell, and hold popular cryptocurrencies 24/7 directly from your account.' },
+    { q: 'How does the AI generate stock insights?', a: 'CashMere leverages Google\'s Gemini 2.0 model to analyze real-time market data, company news, and financial statements to provide high-velocity intelligence on any ticker.' },
+    { q: 'Where does the market data come from?', a: 'We integrate with professional-grade financial APIs like Yahoo Finance to bring you real-time prices, historical charts, and sector-wide performance data.' },
+    { q: 'What is "High-Velocity Discovery"?', a: 'It\'s our intelligent screening tool that instantly highlights top gainers, losers, and high-volume movers, allowing you to identify market opportunities the second they happen.' },
+    { q: 'What is the Fear & Greed Index?', a: 'It\'s a sentiment engine that processes market momentum, volatility, and breadth to help you gauge whether the market is currently in a state of panic or extreme greed.' },
 ];
 
 const floatingSymbols = [
@@ -85,7 +85,13 @@ function CountUp({ target, suffix = '', prefix = '' }: { target: number; suffix?
 }
 
 export default function Home() {
-    const [openFaq, setOpenFaq] = useState<number | null>(null);
+    const [openFaqs, setOpenFaqs] = useState<number[]>([]);
+
+    const toggleFaq = (idx: number) => {
+        setOpenFaqs(prev =>
+            prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]
+        );
+    };
     const [activeStep, setActiveStep] = useState(0);
     const [cycleWord, setCycleWord] = useState(0);
     const cycleWords = ['freedom', 'confidence', 'success', 'wealth', 'growth'];
@@ -104,15 +110,15 @@ export default function Home() {
         const timer1 = setTimeout(() => {
             setAnimationPhase('letters');
         }, 300); // Start letters immediately after a short delay
-        
+
         const timer2 = setTimeout(() => {
             setAnimationPhase('complete');
         }, 1200); // Complete letter animation faster
-        
+
         const timer3 = setTimeout(() => {
             setShowContent(true);
         }, 2000); // Show full content after 2 seconds total
-        
+
         return () => {
             clearTimeout(timer1);
             clearTimeout(timer2);
@@ -161,7 +167,7 @@ export default function Home() {
     }, []);
 
     useEffect(() => {
-        getTickerData().then((data) => setTickerItems(data)).catch(() => {});
+        getTickerData().then((data) => setTickerItems(data)).catch(() => { });
     }, []);
 
     // Particle star field
@@ -209,85 +215,77 @@ export default function Home() {
                     <div className="text-center px-8 py-16">
                         <div className="relative">
                             <div className="flex items-center justify-center text-7xl md:text-8xl font-black tracking-tight text-white" style={{ textShadow: '0 0 30px #4ade9a, 0 0 60px rgba(74,222,154,0.4), 0 0 90px rgba(74,222,154,0.2)' }}>
-                                <span 
-                                    className={`inline-block transition-all duration-500 ease-out ${
-                                        animationPhase === 'initial' 
-                                            ? 'transform -translate-x-full opacity-0' 
-                                            : 'transform translate-x-0 opacity-100'
-                                    }`}
+                                <span
+                                    className={`inline-block transition-all duration-500 ease-out ${animationPhase === 'initial'
+                                        ? 'transform -translate-x-full opacity-0'
+                                        : 'transform translate-x-0 opacity-100'
+                                        }`}
                                     style={{ transitionDelay: '0ms' }}
                                 >
                                     C
                                 </span>
-                                <span 
-                                    className={`inline-block transition-all duration-500 ease-out ${
-                                        animationPhase === 'initial' 
-                                            ? 'transform -translate-x-full opacity-0' 
-                                            : 'transform translate-x-0 opacity-100'
-                                    }`}
+                                <span
+                                    className={`inline-block transition-all duration-500 ease-out ${animationPhase === 'initial'
+                                        ? 'transform -translate-x-full opacity-0'
+                                        : 'transform translate-x-0 opacity-100'
+                                        }`}
                                     style={{ transitionDelay: '80ms' }}
                                 >
                                     a
                                 </span>
-                                <span 
-                                    className={`inline-block transition-all duration-500 ease-out ${
-                                        animationPhase === 'initial' 
-                                            ? 'transform -translate-x-full opacity-0' 
-                                            : 'transform translate-x-0 opacity-100'
-                                    }`}
+                                <span
+                                    className={`inline-block transition-all duration-500 ease-out ${animationPhase === 'initial'
+                                        ? 'transform -translate-x-full opacity-0'
+                                        : 'transform translate-x-0 opacity-100'
+                                        }`}
                                     style={{ transitionDelay: '160ms' }}
                                 >
                                     s
                                 </span>
-                                <span 
-                                    className={`inline-block transition-all duration-500 ease-out ${
-                                        animationPhase === 'initial' 
-                                            ? 'transform -translate-x-full opacity-0' 
-                                            : 'transform translate-x-0 opacity-100'
-                                    }`}
+                                <span
+                                    className={`inline-block transition-all duration-500 ease-out ${animationPhase === 'initial'
+                                        ? 'transform -translate-x-full opacity-0'
+                                        : 'transform translate-x-0 opacity-100'
+                                        }`}
                                     style={{ transitionDelay: '240ms' }}
                                 >
                                     h
                                 </span>
-                                <span 
-                                    className={`inline-block transition-all duration-500 ease-out text-[#4ade9a] ${
-                                        animationPhase === 'initial' 
-                                            ? 'transform -translate-x-full opacity-0' 
-                                            : 'transform translate-x-0 opacity-100'
-                                    }`}
-                                    style={{ 
+                                <span
+                                    className={`inline-block transition-all duration-500 ease-out text-[#4ade9a] ${animationPhase === 'initial'
+                                        ? 'transform -translate-x-full opacity-0'
+                                        : 'transform translate-x-0 opacity-100'
+                                        }`}
+                                    style={{
                                         transitionDelay: '320ms',
                                         textShadow: '0 0 40px #4ade9a, 0 0 80px rgba(74,222,154,0.6), 0 0 120px rgba(74,222,154,0.3)'
                                     }}
                                 >
                                     M
                                 </span>
-                                <span 
-                                    className={`inline-block transition-all duration-500 ease-out ${
-                                        animationPhase === 'initial' 
-                                            ? 'transform -translate-x-full opacity-0' 
-                                            : 'transform translate-x-0 opacity-100'
-                                    }`}
+                                <span
+                                    className={`inline-block transition-all duration-500 ease-out ${animationPhase === 'initial'
+                                        ? 'transform -translate-x-full opacity-0'
+                                        : 'transform translate-x-0 opacity-100'
+                                        }`}
                                     style={{ transitionDelay: '400ms' }}
                                 >
                                     e
                                 </span>
-                                <span 
-                                    className={`inline-block transition-all duration-500 ease-out ${
-                                        animationPhase === 'initial' 
-                                            ? 'transform -translate-x-full opacity-0' 
-                                            : 'transform translate-x-0 opacity-100'
-                                    }`}
+                                <span
+                                    className={`inline-block transition-all duration-500 ease-out ${animationPhase === 'initial'
+                                        ? 'transform -translate-x-full opacity-0'
+                                        : 'transform translate-x-0 opacity-100'
+                                        }`}
                                     style={{ transitionDelay: '480ms' }}
                                 >
                                     r
                                 </span>
-                                <span 
-                                    className={`inline-block transition-all duration-500 ease-out ${
-                                        animationPhase === 'initial' 
-                                            ? 'transform -translate-x-full opacity-0' 
-                                            : 'transform translate-x-0 opacity-100'
-                                    }`}
+                                <span
+                                    className={`inline-block transition-all duration-500 ease-out ${animationPhase === 'initial'
+                                        ? 'transform -translate-x-full opacity-0'
+                                        : 'transform translate-x-0 opacity-100'
+                                        }`}
                                     style={{ transitionDelay: '560ms' }}
                                 >
                                     e
@@ -334,14 +332,14 @@ export default function Home() {
                                 fontSize: `${p.size}rem`,
                                 opacity: 0,
                                 color: p.symbol.startsWith('+') || p.symbol === '▲' ? '#4ade9a' :
-                                       p.symbol.startsWith('-') || p.symbol === '▼' ? '#f87171' : '#f0ede8',
+                                    p.symbol.startsWith('-') || p.symbol === '▼' ? '#f87171' : '#f0ede8',
                                 animation: showContent ? `floatSymbol ${p.duration}s ease-in-out ${p.delay}s infinite, symbolFadeIn 1.5s ease ${p.fadeDelay}s forwards` : 'none',
                             }}
                         >
                             {p.symbol}
                         </span>
                     ))}
-                    
+
                     {/* Additional floating elements */}
                     {showContent && ['💰', '📈', '🚀', '💎', '⚡', '🎯'].map((emoji, i) => (
                         <span
@@ -393,17 +391,6 @@ export default function Home() {
                     )}
                 </div>
 
-                {/* Bottom left — Follow Us */}
-                <div className={`absolute bottom-8 left-8 z-10 flex items-center gap-4 transition-all duration-1000 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                    <span className="text-xs text-[#a8a8a0] uppercase tracking-widest">Follow Us</span>
-                    <div className="flex items-center gap-3">
-                        {['𝕏', 'in', 'f', '▶'].map((icon, i) => (
-                            <div key={i} className="w-8 h-8 rounded-full border border-[#2a3d30] flex items-center justify-center text-xs text-[#a8a8a0] hover:border-[#4ade9a] hover:text-[#4ade9a] transition-all duration-300 cursor-pointer">
-                                {icon}
-                            </div>
-                        ))}
-                    </div>
-                </div>
 
                 {/* Bottom center — Scroll to explore */}
                 <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 transition-all duration-1000 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
@@ -503,7 +490,7 @@ export default function Home() {
                                 <line x1="60" y1="300" x2="200" y2="200" stroke="#4ade9a" strokeOpacity="0.08" strokeWidth="1" />
                                 <line x1="180" y1="360" x2="200" y2="200" stroke="#4ade9a" strokeOpacity="0.08" strokeWidth="1" />
                                 {/* Glowing nodes */}
-                                {[[200,200],[80,80],[200,50],[320,100],[350,220],[300,330],[180,360],[60,300]].map(([cx,cy], i) => (
+                                {[[200, 200], [80, 80], [200, 50], [320, 100], [350, 220], [300, 330], [180, 360], [60, 300]].map(([cx, cy], i) => (
                                     <g key={i}>
                                         <circle cx={cx} cy={cy} r="6" fill="#4ade9a" fillOpacity="0.08" className="animate-pulse" />
                                         <circle cx={cx} cy={cy} r="3" fill="#4ade9a" fillOpacity={i === 0 ? 0.6 : 0.25} className="animate-pulse" style={{ animationDelay: `${i * 0.3}s` }} />
@@ -631,36 +618,33 @@ export default function Home() {
                                 <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]"></div>
                                 <span className="ml-2 text-[10px] text-[#a8a8a0]">CashMere — AI Insights</span>
                             </div>
-                            <div className="p-5">
+                            <div className="p-8 space-y-6">
                                 {/* AI Summary Card */}
-                                <div className="bg-[#0d1a14] border border-[#2a3d30]/50 rounded-lg p-4 mb-4">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <svg className="w-4 h-4 text-[#4ade9a]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                        <span className="text-[10px] text-[#4ade9a] font-bold uppercase tracking-wider">AI Portfolio Pulse</span>
+                                <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-8 shadow-2xl relative overflow-hidden group">
+                                    <div className="absolute top-6 right-6 opacity-20">
+                                        <svg className="w-8 h-8 text-[#4ade9a]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
                                     </div>
-                                    <p className="text-[11px] text-[#a8a8a0] leading-relaxed">Your portfolio is heavily consolidated in tech, showing strong momentum from AI-driven rallies. Diversification score is low — consider index funds to hedge.</p>
+                                    <h3 className="text-3xl font-serif font-bold text-[#f0ede8] mb-6" style={{ fontFamily: 'Playfair Display, serif' }}>Portfolio Pulse</h3>
+                                    <p className="text-base text-[#a8a8a0] leading-relaxed">
+                                        <span className="text-[#4ade9a] font-bold">AI Insights:</span> Your portfolio shows concentration in large-cap tech, with both Amazon and Meta Platforms being prominent holdings. Recent news suggests some investor caution regarding Amazon's free cash flow, while Meta is seeing positive sentiment from a notable investor like Bill Ackman. Both companies operate in dynamic sectors with ongoing innovation, but also face scrutiny.
+                                    </p>
                                 </div>
-                                {/* Score badges */}
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between p-2.5 bg-[#0d1a14] border border-[#2a3d30]/40 rounded-lg">
-                                        <span className="text-[10px] text-[#a8a8a0]">Growth Potential</span>
-                                        <span className="text-[10px] font-bold text-[#4ade9a] bg-[#4ade9a]/10 px-2 py-0.5 rounded-full border border-[#4ade9a]/20">95/100</span>
+
+                                {/* Score badges row */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="flex flex-col gap-4 p-6 bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl transition-all duration-300 hover:border-[#4ade9a]/30">
+                                        <span className="text-sm font-medium text-[#a8a8a0]">Valuation Risk</span>
+                                        <span className="text-sm font-bold px-4 py-2 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 w-fit">75/100</span>
                                     </div>
-                                    <div className="flex items-center justify-between p-2.5 bg-[#0d1a14] border border-[#2a3d30]/40 rounded-lg">
-                                        <span className="text-[10px] text-[#a8a8a0]">Overvaluation Risk</span>
-                                        <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20">82/100</span>
+                                    <div className="flex flex-col gap-4 p-6 bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl transition-all duration-300 hover:border-[#4ade9a]/30">
+                                        <span className="text-sm font-medium text-[#a8a8a0]">Growth Potential</span>
+                                        <span className="text-sm font-bold px-4 py-2 rounded-full bg-[#4ade9a]/10 text-[#4ade9a] border border-[#4ade9a]/20 w-fit">80/100</span>
                                     </div>
-                                    <div className="flex items-center justify-between p-2.5 bg-[#0d1a14] border border-[#2a3d30]/40 rounded-lg">
-                                        <span className="text-[10px] text-[#a8a8a0]">Political Climate</span>
-                                        <span className="text-[10px] font-bold text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded-full border border-yellow-500/20">50/100</span>
-                                    </div>
-                                </div>
-                                {/* Lookout */}
-                                <div className="mt-4 pt-3 border-t border-[#2a3d30]/50">
-                                    <div className="text-[10px] text-[#a8a8a0] font-bold uppercase tracking-wider mb-2">Lookout 👀</div>
-                                    <div className="space-y-1.5 text-[11px]">
-                                        <div className="flex gap-2"><span className="text-[#4ade9a]">—</span><span className="text-[#a8a8a0]"><span className="text-white font-medium">MRST</span> P/E ratio dropped, <span className="text-[#4ade9a]">look into buying in</span></span></div>
-                                        <div className="flex gap-2"><span className="text-[#a8a8a0]">—</span><span className="text-[#a8a8a0]"><span className="text-white font-medium">Nvidia</span> teases product reveal</span></div>
+                                    <div className="flex flex-col gap-4 p-6 bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl transition-all duration-300 hover:border-[#4ade9a]/30">
+                                        <span className="text-sm font-medium text-[#a8a8a0]">Political Climate</span>
+                                        <span className="text-sm font-bold px-4 py-2 rounded-full bg-[#4ade9a]/10 text-[#4ade9a] border border-[#4ade9a]/20 w-fit">60/100</span>
                                     </div>
                                 </div>
                             </div>
@@ -676,91 +660,123 @@ export default function Home() {
                         <h2 className="text-5xl font-serif font-bold mb-4" style={{ fontFamily: 'Playfair Display, serif' }}>Real-Time Market Data</h2>
                         <p className="text-lg text-[#a8a8a0]">Everything you need to make informed decisions, at a glance</p>
                     </AnimateIn>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-                        {/* Mini Markets Window */}
-                        <AnimateIn>
-                            <div className="bg-[#111c18] border border-[#2a3d30] rounded-xl overflow-hidden hover:border-[#4ade9a]/30 transition-all duration-500">
-                                <div className="flex items-center gap-2 px-4 py-2.5 bg-[#0d1a14] border-b border-[#2a3d30]">
-                                    <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></div>
-                                    <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]"></div>
-                                    <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]"></div>
-                                    <span className="ml-2 text-[10px] text-[#a8a8a0]">Markets — Indices</span>
-                                </div>
-                                <div className="p-4">
-                                    <div className="space-y-2 mb-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-12">
+                        {/* LEFT COLUMN: Indicators */}
+                        <div className="flex flex-col gap-6">
+                            {/* Market Overview Section */}
+                            <AnimateIn>
+                                <div className="space-y-3">
+                                    <h3 className="text-[10px] font-bold tracking-[0.2em] text-[#a8a8a0] uppercase">Market Overview</h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         {[
-                                            { label: 'S&P 500', val: '5,234.18', pct: '+0.81%', pos: true },
-                                            { label: 'Nasdaq', val: '16,742.39', pct: '+1.24%', pos: true },
-                                            { label: 'Dow Jones', val: '39,512.84', pct: '-0.12%', pos: false },
+                                            { label: 'S&P 500', val: '6,909.51', pct: '0.69', path: 'M0 45C10 40 20 50 30 45C40 40 50 20 60 25C70 30 80 15 90 20C100 25 110 35 120 20C130 15 140 25 150 10C160 5 170 15 180 12C190 10 200 15 210 10C220 5 230 15 240 10' },
+                                            { label: 'NASDAQ', val: '22,886.07', pct: '0.90', path: 'M0 40C10 45 20 35 30 40C40 45 50 30 60 35C70 40 80 25 90 30C100 35 110 20 120 25C130 30 140 15 150 20C160 25 170 10 180 15C190 20 200 5 210 10C220 15 230 5 240 8' },
+                                            { label: 'DOW JONES', val: '49,625.97', pct: '0.47', path: 'M0 35C10 40 20 30 30 35C40 40 50 25 60 30C70 35 80 20 90 25C100 30 110 15 120 20C130 25 140 10 150 15C160 20 170 5 180 10C190 15 200 3 210 8C220 12 230 5 240 6' },
                                         ].map((idx, i) => (
-                                            <div key={i} className="flex items-center justify-between p-3 bg-[#0d1a14] border border-[#2a3d30]/50 rounded-lg">
-                                                <span className="text-xs font-bold text-white">{idx.label}</span>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-xs text-white">{idx.val}</span>
-                                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${idx.pos ? 'text-[#4ade9a] bg-[#4ade9a]/10' : 'text-red-400 bg-red-500/10'}`}>{idx.pct}</span>
+                                            <div key={i} className="bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl p-5 pt-6 pb-20 shadow-xl relative overflow-hidden group hover:border-[#4ade9a]/30 transition-all duration-500">
+                                                <div className="relative z-10 flex flex-col gap-1.5">
+                                                    <span className="text-[9px] font-bold tracking-widest text-[#a8a8a0] uppercase">{idx.label}</span>
+                                                    <div className="flex flex-col gap-0">
+                                                        <span className="text-xl font-black text-white leading-tight">{idx.val}</span>
+                                                        <span className="flex items-center gap-1 text-[10px] font-bold text-[#4ade9a]">
+                                                            <span className="text-[8px]">▲</span> {idx.pct}%
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className="absolute bottom-0 left-0 right-0 h-16 opacity-40">
+                                                    <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 240 60">
+                                                        <defs>
+                                                            <linearGradient id={`grad-small-${i}`} x1="0" y1="0" x2="0" y2="1">
+                                                                <stop offset="0%" stopColor="#4ade9a" stopOpacity="0.1" />
+                                                                <stop offset="100%" stopColor="#4ade9a" stopOpacity="0" />
+                                                            </linearGradient>
+                                                        </defs>
+                                                        <path d={`${idx.path} V 60 H 0 Z`} fill={`url(#grad-small-${i})`} />
+                                                        <path d={idx.path} fill="none" stroke="#4ade9a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                    </svg>
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
-                                    {/* Mini Fear & Greed */}
-                                    <div className="bg-[#0d1a14] border border-[#2a3d30]/50 rounded-lg p-3">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-[9px] text-[#a8a8a0] uppercase tracking-wider font-bold">Fear & Greed</span>
-                                            <span className="text-[10px] font-bold text-[#4ade9a]">Greed</span>
-                                        </div>
-                                        <div className="w-full h-2 rounded-full bg-gradient-to-r from-red-500 via-yellow-400 to-[#4ade9a]">
-                                            <div className="relative">
-                                                <div className="absolute w-3 h-3 rounded-full bg-white border-2 border-[#4ade9a] shadow-lg" style={{ left: '69%', top: '-6.5px' }}></div>
-                                            </div>
-                                        </div>
+                                </div>
+                            </AnimateIn>
+
+                            {/* Market Breadth Card */}
+                            <AnimateIn delay={0.1}>
+                                <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl p-5 shadow-xl">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="text-[9px] font-bold tracking-[0.2em] text-[#a8a8a0] uppercase">Market Breadth</h3>
+                                        <span className="text-[9px] text-[#a8a8a0]">Advance / Decline</span>
+                                    </div>
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <span className="flex items-center gap-1 text-sm font-black text-[#4ade9a]">
+                                            <span className="text-xs">↑</span> 2,667
+                                        </span>
+                                        <span className="text-[#a8a8a0] text-[9px] font-bold">vs</span>
+                                        <span className="flex items-center gap-1 text-sm font-black text-red-500">
+                                            <span className="text-xs">↓</span> 1,333
+                                        </span>
+                                    </div>
+                                    <div className="w-full h-1.5 rounded-full overflow-hidden flex bg-[#2a1a1a]">
+                                        <div className="h-full bg-[#4ade9a] transition-all duration-1000" style={{ width: '67%' }} />
+                                    </div>
+                                    <div className="flex justify-between mt-2 text-[9px] font-medium">
+                                        <span className="text-[#a8a8a0]">67% advancing</span>
+                                        <span className="text-[#a8a8a0]">33% declining</span>
                                     </div>
                                 </div>
-                            </div>
-                        </AnimateIn>
-                        {/* Mini Sector Heatmap */}
-                        <AnimateIn delay={0.15}>
-                            <div className="bg-[#111c18] border border-[#2a3d30] rounded-xl overflow-hidden hover:border-[#4ade9a]/30 transition-all duration-500">
-                                <div className="flex items-center gap-2 px-4 py-2.5 bg-[#0d1a14] border-b border-[#2a3d30]">
-                                    <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></div>
-                                    <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]"></div>
-                                    <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]"></div>
-                                    <span className="ml-2 text-[10px] text-[#a8a8a0]">Markets — Sectors & Watchlist</span>
+                            </AnimateIn>
+
+                            {/* Fear & Greed Index Card */}
+                            <AnimateIn delay={0.2}>
+                                <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl p-5 shadow-xl">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="text-[9px] font-bold tracking-[0.2em] text-[#a8a8a0] uppercase">Fear & Greed Index</h3>
+                                    </div>
+                                    <div className="relative h-2.5 mt-2">
+                                        <div className="absolute inset-0 w-full h-full rounded-full bg-gradient-to-r from-red-600 via-yellow-400 to-[#4ade9a]"></div>
+                                        <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-[#4ade9a] rounded-full shadow-[0_0_10px_rgba(74,222,154,0.4)] z-10" style={{ left: '77%' }}></div>
+                                    </div>
+                                    <div className="flex justify-between text-[8px] font-bold uppercase tracking-wider mt-1.5 mb-1">
+                                        <span className="text-red-600">Extreme Fear</span>
+                                        <span className="text-[#4ade9a]">Extreme Greed</span>
+                                    </div>
+                                    <div className="text-center">
+                                        <span className="text-xl font-black text-[#4ade9a]">77</span>
+                                    </div>
                                 </div>
-                                <div className="p-4">
-                                    <div className="text-[9px] text-[#a8a8a0] uppercase tracking-wider font-bold mb-2">Sector Performance</div>
-                                    <div className="grid grid-cols-3 gap-1.5 mb-4">
+                            </AnimateIn>
+                        </div>
+
+                        {/* RIGHT COLUMN: Sector Performance */}
+                        <div className="flex flex-col">
+                            <AnimateIn delay={0.3}>
+                                <div className="space-y-3">
+                                    <h3 className="text-[10px] font-bold tracking-[0.2em] text-[#a8a8a0] uppercase">Sector Performance</h3>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                         {[
-                                            { name: 'Tech', pct: '+1.82%', pos: true },
-                                            { name: 'Health', pct: '+0.45%', pos: true },
-                                            { name: 'Finance', pct: '-0.32%', pos: false },
-                                            { name: 'Energy', pct: '+2.14%', pos: true },
-                                            { name: 'Consumer', pct: '-0.87%', pos: false },
-                                            { name: 'Industrial', pct: '+0.21%', pos: true },
+                                            { name: 'Tech', pct: '+0.48%', pos: true },
+                                            { name: 'Finance', pct: '+0.65%', pos: true },
+                                            { name: 'Health', pct: '-0.28%', pos: false },
+                                            { name: 'Energy', pct: '-0.54%', pos: false },
+                                            { name: 'Cons. D', pct: '+1.04%', pos: true },
+                                            { name: 'Cons. S', pct: '+0.25%', pos: true },
+                                            { name: 'Indust.', pct: '+0.50%', pos: true },
+                                            { name: 'Materials', pct: '+0.25%', pos: true },
+                                            { name: 'RE', pct: '+0.83%', pos: true },
+                                            { name: 'Utilities', pct: '+0.48%', pos: true },
+                                            { name: 'Comm.', pct: '+1.44%', pos: true },
                                         ].map((s, i) => (
-                                            <div key={i} className={`flex flex-col items-center justify-center rounded-lg border p-2 ${s.pos ? 'bg-[#4ade9a]/10 border-[#4ade9a]/20' : 'bg-red-500/10 border-red-500/20'}`}>
-                                                <span className="text-[10px] font-bold text-white">{s.name}</span>
-                                                <span className={`text-[11px] font-bold ${s.pos ? 'text-[#4ade9a]' : 'text-red-400'}`}>{s.pct}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="text-[9px] text-[#a8a8a0] uppercase tracking-wider font-bold mb-2">Quick Watch</div>
-                                    <div className="flex gap-1.5 flex-wrap">
-                                        {[
-                                            { sym: 'NVDA', pct: '+1.02%', pos: true },
-                                            { sym: 'AAPL', pct: '-0.26%', pos: false },
-                                            { sym: 'TSLA', pct: '-2.34%', pos: false },
-                                            { sym: 'MSFT', pct: '+0.77%', pos: true },
-                                            { sym: 'META', pct: '+1.45%', pos: true },
-                                        ].map((w, i) => (
-                                            <div key={i} className="flex flex-col items-center bg-[#0d1a14] border border-[#2a3d30] rounded-lg px-3 py-2">
-                                                <span className="text-[10px] font-bold text-white">{w.sym}</span>
-                                                <span className={`text-[10px] font-bold ${w.pos ? 'text-[#4ade9a]' : 'text-red-400'}`}>{w.pct}</span>
+                                            <div key={i} className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all duration-300 hover:scale-[1.02] ${s.pos ? 'bg-[#4ade9a]/5 border-[#4ade9a]/10' : 'bg-red-500/5 border-red-500/10'
+                                                }`}>
+                                                <span className="text-[11px] font-bold text-[#a8a8a0] mb-0.5">{s.name}</span>
+                                                <span className={`text-sm font-black ${s.pos ? 'text-[#4ade9a]' : 'text-red-400'}`}>{s.pct}</span>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
-                            </div>
-                        </AnimateIn>
+                            </AnimateIn>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -787,40 +803,55 @@ export default function Home() {
                             <div className="absolute bottom-0 right-0 w-32 h-32 bg-[#4ade9a]/5 rounded-full blur-3xl"></div>
 
                             {activeStep === 0 && (
-                                <div className="w-full" style={{ animation: 'fadeInUp 0.4s ease' }}>
-                                    {/* Mini Portfolio Replica */}
-                                    <div className="bg-[#111c18] border border-[#2a3d30] rounded-xl overflow-hidden max-w-lg mx-auto">
-                                        <div className="flex items-center gap-2 px-4 py-2.5 bg-[#0d1a14] border-b border-[#2a3d30]">
-                                            <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></div>
-                                            <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]"></div>
-                                            <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]"></div>
-                                            <span className="ml-2 text-[10px] text-[#a8a8a0]">CashMere — Portfolio</span>
-                                        </div>
-                                        <div className="p-5">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div>
-                                                    <div className="text-[10px] text-[#a8a8a0] uppercase tracking-wider font-bold">Total Portfolio Value</div>
-                                                    <div className="text-2xl font-bold text-white mt-1">$24,847.32</div>
-                                                </div>
-                                                <div className="bg-[#1a2a22] px-3 py-2 rounded-lg border border-[#2a3d30]">
-                                                    <div className="text-[9px] text-[#a8a8a0] uppercase tracking-wider">Cash</div>
-                                                    <div className="text-sm font-bold text-[#4ade9a]">$4,847.32</div>
+                                <div className="w-full max-w-lg mx-auto" style={{ animation: 'fadeInUp 0.4s ease' }}>
+                                    {/* Compact Portfolio Mockup */}
+                                    <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl p-5 shadow-2xl relative overflow-hidden group hover:border-[#4ade9a]/30 transition-all duration-500">
+                                        <div className="flex justify-between items-start gap-4 mb-5">
+                                            {/* Left: Total Value */}
+                                            <div className="flex flex-col gap-1">
+                                                <div className="text-[8px] font-bold tracking-[0.2em] text-[#a8a8a0] uppercase">Total Portfolio Value</div>
+                                                <div className="text-3xl font-black text-white">$10,301.95</div>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#4ade9a]/10 border border-[#4ade9a]/20 text-[#4ade9a] text-[9px] font-bold">
+                                                        <span>▲</span> +$301.95
+                                                    </span>
+                                                    <span className="text-[9px] text-[#a8a8a0]">vs $10k initial</span>
                                                 </div>
                                             </div>
-                                            <div className="space-y-2">
+
+                                            {/* Right: Available Cash Card */}
+                                            <div className="bg-[#0d1a14] border border-[#2a3d30] rounded-xl p-3 min-w-[130px] shadow-xl relative overflow-hidden">
+                                                <div className="text-[8px] font-bold tracking-[0.2em] text-[#a8a8a0] uppercase mb-1">Available Cash</div>
+                                                <div className="text-lg font-black text-[#4ade9a]">$9,436.18</div>
+                                                <div className="text-[8px] text-[#a8a8a0]">92% weight</div>
+                                            </div>
+                                        </div>
+
+                                        {/* Holdings Table */}
+                                        <div className="w-full">
+                                            <div className="grid grid-cols-5 border-b border-[#2a3d30]/30 pb-2 mb-2 text-[8px] font-bold tracking-[0.2em] text-[#a8a8a0] uppercase">
+                                                <span>Ticker</span>
+                                                <span className="text-right">Shares</span>
+                                                <span className="text-right">Price</span>
+                                                <span className="text-right">Val</span>
+                                                <span className="text-right">P&L</span>
+                                            </div>
+                                            <div className="space-y-0.5">
                                                 {[
-                                                    { ticker: 'NVDA', name: 'Nvidia Corp', shares: '12', price: '$892.40', pnl: '+$1,247.80', pnlPct: '+13.2%', pos: true },
-                                                    { ticker: 'AAPL', name: 'Apple Inc', shares: '25', price: '$189.84', pnl: '+$342.50', pnlPct: '+7.5%', pos: true },
-                                                    { ticker: 'TSLA', name: 'Tesla Inc', shares: '8', price: '$248.50', pnl: '-$156.00', pnlPct: '-7.3%', pos: false },
-                                                ].map((row, i) => (
-                                                    <div key={i} className="flex items-center justify-between py-2 border-b border-[#2a3d30]/30 last:border-0">
+                                                    { ticker: 'AMZN', name: 'Amazon', shares: '1', curr: '$210.11', val: '$210', pl: '+114.32', plPct: '+119%' },
+                                                    { ticker: 'META', name: 'Meta', shares: '1', curr: '$655.66', val: '$655', pl: '+187.63', plPct: '+40%' }
+                                                ].map((item, i) => (
+                                                    <div key={i} className="grid grid-cols-5 items-center py-2.5 border-b border-[#2a3d30]/10 last:border-0 hover:bg-white/[0.02] transition-colors rounded px-1.5 -mx-1.5">
                                                         <div>
-                                                            <div className="text-xs font-bold text-white">{row.ticker}</div>
-                                                            <div className="text-[10px] text-[#a8a8a0]">{row.name}</div>
+                                                            <div className="text-[11px] font-bold text-white mb-0.5">{item.ticker}</div>
+                                                            <div className="text-[9px] text-[#a8a8a0]">{item.name}</div>
                                                         </div>
+                                                        <div className="text-right text-[10px] font-bold text-white">{item.shares}</div>
+                                                        <div className="text-right text-[10px] font-bold text-white">{item.curr}</div>
+                                                        <div className="text-right text-[10px] font-bold text-white">{item.val}</div>
                                                         <div className="text-right">
-                                                            <div className="text-xs font-medium text-white">{row.price}</div>
-                                                            <div className={`text-[10px] font-bold ${row.pos ? 'text-[#4ade9a]' : 'text-red-400'}`}>{row.pnl} ({row.pnlPct})</div>
+                                                            <div className="text-[10px] font-bold text-[#4ade9a] leading-none mb-0.5">{item.pl}</div>
+                                                            <div className="text-[8px] font-bold text-[#4ade9a]">{item.plPct}</div>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -830,45 +861,54 @@ export default function Home() {
                                 </div>
                             )}
                             {activeStep === 1 && (
-                                <div className="w-full" style={{ animation: 'fadeInUp 0.4s ease' }}>
-                                    {/* Mini Markets Replica */}
-                                    <div className="bg-[#111c18] border border-[#2a3d30] rounded-xl overflow-hidden max-w-lg mx-auto">
-                                        <div className="flex items-center gap-2 px-4 py-2.5 bg-[#0d1a14] border-b border-[#2a3d30]">
-                                            <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></div>
-                                            <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]"></div>
-                                            <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]"></div>
-                                            <span className="ml-2 text-[10px] text-[#a8a8a0]">CashMere — Markets</span>
+                                <div className="w-full max-w-lg mx-auto" style={{ animation: 'fadeInUp 0.4s ease' }}>
+                                    {/* Compact Markets Mockup */}
+                                    <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl p-5 shadow-2xl relative overflow-hidden group hover:border-[#4ade9a]/30 transition-all duration-500">
+                                        <div className="bg-[#0b1410] border border-[#2a3d30]/50 rounded-xl px-3 py-2 flex items-center gap-2.5 mb-5">
+                                            <svg className="w-3.5 h-3.5 text-[#a8a8a0]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                            <span className="text-[11px] text-[#5a6b61]">Search symbol / name...</span>
                                         </div>
-                                        <div className="p-5">
-                                            <div className="text-[9px] text-[#a8a8a0] uppercase tracking-wider font-bold mb-2">Market Overview</div>
-                                            <div className="flex gap-2 mb-4">
+
+                                        <div className="mb-6">
+                                            <h3 className="text-[8px] font-bold tracking-[0.2em] text-[#a8a8a0] uppercase mb-2.5">Quick Watch</h3>
+                                            <div className="flex gap-1.5 items-center overflow-x-auto pb-2 no-scrollbar">
                                                 {[
-                                                    { label: 'S&P 500', val: '5,234.18', pct: '+0.81%', pos: true },
-                                                    { label: 'Nasdaq', val: '16,742.39', pct: '+1.24%', pos: true },
-                                                    { label: 'Dow', val: '39,512.84', pct: '-0.12%', pos: false },
-                                                ].map((idx, i) => (
-                                                    <div key={i} className="flex-1 bg-[#0d1a14] border border-[#2a3d30] rounded-lg p-2.5">
-                                                        <div className="text-[9px] text-[#a8a8a0] font-bold uppercase">{idx.label}</div>
-                                                        <div className="text-xs font-bold text-white mt-0.5">{idx.val}</div>
-                                                        <div className={`text-[10px] font-bold ${idx.pos ? 'text-[#4ade9a]' : 'text-red-400'}`}>{idx.pct}</div>
+                                                    { t: 'NVDA', p: '+1.02%', pos: true },
+                                                    { t: 'AAPL', p: '+1.54%', pos: true },
+                                                    { t: 'TSLA', p: '+0.03%', pos: true },
+                                                    { t: 'AMZN', p: '+2.56%', pos: true },
+                                                    { t: 'MSFT', p: '-0.31%', pos: false },
+                                                ].map((tick, i) => (
+                                                    <div key={i} className="flex-shrink-0 bg-[#0d1a14] border border-[#2a3d30] rounded-xl p-2.5 min-w-[70px] text-center">
+                                                        <div className="text-[10px] font-bold text-white mb-0.5">{tick.t}</div>
+                                                        <div className={`text-[8px] font-bold ${tick.pos ? 'text-[#4ade9a]' : 'text-red-400'}`}>{tick.p}</div>
                                                     </div>
                                                 ))}
                                             </div>
-                                            <div className="text-[9px] text-[#a8a8a0] uppercase tracking-wider font-bold mb-2">Top Gainers</div>
-                                            <div className="space-y-1.5">
+                                        </div>
+
+                                        <div>
+                                            <h3 className="text-[8px] font-bold tracking-[0.2em] text-[#a8a8a0] uppercase mb-2.5">Discovery</h3>
+                                            <div className="bg-[#0b1410] border border-[#2a3d30]/50 rounded-xl p-1 flex gap-1 mb-4">
+                                                <div className="flex-1 text-center py-1.5 bg-[#4ade9a] text-[#0d1a14] rounded-lg text-[9px] font-bold shadow-lg">↑ Gainers</div>
+                                                <div className="flex-1 text-center py-1.5 text-[#a8a8a0] text-[9px] font-bold">↓ Losers</div>
+                                                <div className="flex-1 text-center py-1.5 text-[#a8a8a0] text-[9px] font-bold">⚡ Vol</div>
+                                            </div>
+
+                                            <div className="space-y-0 text-white">
                                                 {[
-                                                    { sym: 'SMCI', name: 'Super Micro', price: '$892.40', pct: '+12.4%' },
-                                                    { sym: 'MSTR', name: 'MicroStrategy', price: '$1,847.20', pct: '+8.7%' },
-                                                    { sym: 'PLTR', name: 'Palantir', price: '$24.80', pct: '+6.2%' },
-                                                ].map((row, i) => (
-                                                    <div key={i} className="flex items-center justify-between py-1.5 border-b border-[#2a3d30]/30 last:border-0">
-                                                        <div>
-                                                            <span className="text-xs font-bold text-white">{row.sym}</span>
-                                                            <span className="text-[10px] text-[#a8a8a0] ml-2">{row.name}</span>
+                                                    { s: 'RNG', n: 'Ringcentral', p: '$39.50', ch: '+34.4%' },
+                                                    { s: 'LGN', n: 'Legence', p: '$55.24', ch: '+16.8%' },
+                                                    { s: 'TLX', n: 'Telix Pharma', p: '$7.69', ch: '+14.6%' },
+                                                ].map((stock, i) => (
+                                                    <div key={i} className="flex items-center justify-between py-2.5 border-b border-[#2a3d30]/10 last:border-0 hover:bg-white/[0.02] transition-colors rounded px-1.5 -mx-1.5">
+                                                        <div className="flex flex-col gap-0.5">
+                                                            <span className="text-[11px] font-bold">{stock.s}</span>
+                                                            <span className="text-[8px] text-[#a8a8a0]">{stock.n}</span>
                                                         </div>
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-xs text-white">{row.price}</span>
-                                                            <span className="text-[10px] font-bold text-[#4ade9a] bg-[#4ade9a]/10 px-1.5 py-0.5 rounded">{row.pct}</span>
+                                                        <div className="text-right flex flex-col gap-0.5">
+                                                            <span className="text-[11px] font-bold">{stock.p}</span>
+                                                            <span className="text-[9px] font-bold text-[#4ade9a]">{stock.ch}</span>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -934,11 +974,10 @@ export default function Home() {
                                 ].map((step, i) => (
                                     <div key={i} className="flex flex-col items-center cursor-pointer group" onClick={() => setActiveStep(i)}>
                                         {/* Step dot */}
-                                        <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-xs font-bold mb-4 transition-all duration-300 ${
-                                            i <= activeStep
-                                                ? 'bg-[#4ade9a] border-[#4ade9a] text-[#0d1a14]'
-                                                : 'bg-transparent border-[#2a3d30] text-[#a8a8a0] group-hover:border-[#4ade9a]/50'
-                                        }`}>
+                                        <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-xs font-bold mb-4 transition-all duration-300 ${i <= activeStep
+                                            ? 'bg-[#4ade9a] border-[#4ade9a] text-[#0d1a14]'
+                                            : 'bg-transparent border-[#2a3d30] text-[#a8a8a0] group-hover:border-[#4ade9a]/50'
+                                            }`}>
                                             {i + 1}
                                         </div>
                                         <span className={`text-xs uppercase tracking-widest mb-2 transition-colors duration-300 ${i === activeStep ? 'text-[#4ade9a]' : 'text-[#a8a8a0]'}`}>{step.label}</span>
@@ -989,9 +1028,9 @@ export default function Home() {
                     </AnimateIn>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         {[
-                            { name: 'Alex M.', text: 'CashMere completely changed how I invest. The AI insights are incredible.' },
-                            { name: 'Sarah K.', text: 'Best trading platform I have used. Clean interface and powerful tools.' },
-                            { name: 'James R.', text: 'The margin rates are unbeatable. Switched from my old broker in a day.' },
+                            { name: 'Neel M.', text: 'CashMere completely changed how I invest. The AI insights are incredible.' },
+                            { name: 'Karan K.', text: 'Best trading platform I have used. Clean interface and powerful tools.' },
+                            { name: 'Anubhav B.', text: 'CashMere makes complicated stock information so easy to understand.' },
                         ].map((t, i) => (
                             <AnimateIn key={i} delay={i * 0.12}>
                                 <div className="p-8 bg-[#1a2a22]/50 border border-[#2a3d30] rounded-xl hover:border-[#4ade9a]/30 transition-all duration-300 hover:-translate-y-1">
@@ -1012,19 +1051,28 @@ export default function Home() {
                         <h2 className="text-5xl font-serif font-bold mb-4" style={{ fontFamily: 'Playfair Display, serif' }}>FAQ</h2>
                     </AnimateIn>
                     <div className="space-y-4">
-                        {faqs.map((faq, i) => (
-                            <AnimateIn key={i} delay={i * 0.08}>
-                                <div className="border border-[#2a3d30] rounded-xl overflow-hidden hover:border-[#4ade9a]/30 transition-colors duration-300">
-                                    <button onClick={() => setOpenFaq(openFaq === i ? null : i)} className="w-full text-left px-6 py-4 flex items-center justify-between hover:bg-[#1a2a22]/50 transition">
-                                        <span className="font-semibold">{faq.q}</span>
-                                        <span className="text-[#4ade9a] text-xl transition-transform duration-300" style={{ transform: openFaq === i ? 'rotate(45deg)' : 'rotate(0deg)' }}>+</span>
-                                    </button>
-                                    <div className="overflow-hidden transition-all duration-300" style={{ maxHeight: openFaq === i ? '200px' : '0px', opacity: openFaq === i ? 1 : 0 }}>
-                                        <div className="px-6 pb-4 text-[#a8a8a0] text-sm leading-relaxed">{faq.a}</div>
+                        {faqs.map((faq, i) => {
+                            const isOpen = openFaqs.includes(i);
+                            return (
+                                <AnimateIn key={i} delay={i * 0.08}>
+                                    <div className={`border rounded-xl overflow-hidden transition-all duration-300 ${isOpen ? 'border-[#4ade9a]/50 bg-[#1a2a22]/20' : 'border-[#2a3d30] hover:border-[#4ade9a]/30'}`}>
+                                        <button
+                                            onClick={() => toggleFaq(i)}
+                                            className="w-full text-left px-6 py-4 flex items-center justify-between hover:bg-[#1a2a22]/50 transition"
+                                        >
+                                            <span className={`font-semibold transition-colors duration-300 ${isOpen ? 'text-[#4ade9a]' : 'text-white'}`}>{faq.q}</span>
+                                            <span className="text-[#4ade9a] text-xl transition-transform duration-300" style={{ transform: isOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>+</span>
+                                        </button>
+                                        <div
+                                            className="overflow-hidden transition-all duration-300"
+                                            style={{ maxHeight: isOpen ? '240px' : '0px', opacity: isOpen ? 1 : 0 }}
+                                        >
+                                            <div className="px-6 pb-5 text-[#a8a8a0] text-sm leading-relaxed border-t border-[#2a3d30]/30 pt-4">{faq.a}</div>
+                                        </div>
                                     </div>
-                                </div>
-                            </AnimateIn>
-                        ))}
+                                </AnimateIn>
+                            );
+                        })}
                     </div>
                 </div>
             </section>
