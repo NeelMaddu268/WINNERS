@@ -503,32 +503,32 @@ export default function TickerPage() {
     }
 
     return (
-        <div className="flex flex-col w-full animate-in fade-in duration-500 font-sans text-white pb-24 md:pb-8 max-w-2xl mx-auto">
+        <div className="flex flex-col w-full animate-in fade-in duration-500 font-sans text-[#f0ede8] pb-24 md:pb-8 max-w-2xl mx-auto">
             {/* Header with Back Button */}
-            <div className="sticky top-16 bg-black/95 backdrop-blur-xl z-40 px-4 py-4 flex justify-between items-center border-b border-zinc-800">
+            <div className="sticky top-16 bg-[#0d1a14]/95 backdrop-blur-xl z-40 px-4 py-4 flex justify-between items-center border-b border-[#2a3d30]/50">
                 <Link
                     href="/markets"
-                    className="text-white w-10 h-10 flex items-center justify-center rounded-full bg-zinc-900 hover:bg-zinc-800 transition"
+                    className="text-[#f0ede8] w-10 h-10 flex items-center justify-center rounded-full bg-[#1a2a22] hover:bg-[#1f2f25] transition border border-[#2a3d30]/50"
                     aria-label="Back to markets"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
                 </Link>
-                <span className="font-bold">{tickerData.ticker}</span>
+                <span className="font-bold text-[#f0ede8]">{tickerData.ticker}</span>
                 <div className="w-10" />
             </div>
 
             <div className="px-4">
                 {/* Ticker Header */}
                 <div className="flex flex-col gap-1 mt-6">
-                    <h1 className="text-3xl font-bold tracking-tight">{tickerData.name}</h1>
-                    <div className="text-4xl font-bold mt-2">${tickerData.price.toFixed(2)}</div>
+                    <h1 className="text-3xl font-bold tracking-tight text-[#f0ede8]">{tickerData.name}</h1>
+                    <div className="text-4xl font-bold mt-2 text-[#f0ede8]">${tickerData.price.toFixed(2)}</div>
                     <div className="flex items-center gap-2 mt-1">
-                        <span className={`font-semibold text-sm ${tickerData.isPositive ? "text-[#00c805]" : "text-red-500"}`}>
+                        <span className={`font-semibold text-sm ${tickerData.isPositive ? "text-[#4ade9a]" : "text-red-400"}`}>
                             {tickerData.isPositive ? "▲" : "▼"} {tickerData.diff}
                         </span>
-                        <span className="text-zinc-400 text-sm">Today</span>
+                        <span className="text-[#a8a8a0] text-sm">Today</span>
                     </div>
                 </div>
 
@@ -536,10 +536,10 @@ export default function TickerPage() {
                 <div className="w-full mt-8 relative pr-14">
                     {chartPriceRange && (
                         <div className="absolute right-0 top-0 bottom-10 w-12 flex flex-col justify-between py-1 z-20 pointer-events-none text-right">
-                            <span className="text-xs font-medium text-zinc-400">
+                            <span className="text-xs font-medium text-[#a8a8a0]">
                                 ${chartPriceRange.max.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
-                            <span className="text-xs font-medium text-zinc-400">
+                            <span className="text-xs font-medium text-[#a8a8a0]">
                                 ${chartPriceRange.min.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                         </div>
