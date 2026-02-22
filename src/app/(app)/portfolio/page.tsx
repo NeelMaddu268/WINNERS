@@ -592,7 +592,7 @@ export default function PortfolioPage() {
                                                             <span className={tx.type === "buy" ? "text-sm font-bold px-2 py-0.5 rounded bg-[#4ade9a]/20 text-[#4ade9a]" : "text-sm font-bold px-2 py-0.5 rounded bg-red-500/20 text-red-400"}>
                                                                 {tx.type.toUpperCase()}
                                                             </span>
-                                                            <span className="text-sm text-[#a8a8a0]">{tx.shares} @ ${(tx.price ?? 0).toFixed(2)}</span>
+                                                            <span className="text-sm text-[#a8a8a0]">{tx.shares.toLocaleString(undefined, { maximumFractionDigits: 2 })} @ ${(tx.price ?? 0).toFixed(2)}</span>
                                                             <span className="font-bold">${(tx.total ?? 0).toFixed(2)}</span>
                                                             <span className="text-sm text-[#a8a8a0]">{new Date(tx.timestamp).toLocaleDateString()}</span>
                                                             <button
@@ -716,7 +716,7 @@ export default function PortfolioPage() {
 
                             {/* Lookout Section - full width below */}
                             <div className="lg:col-span-3 bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-8 shadow-xl">
-                                <h3 className="text-xl font-serif font-bold mb-6 flex items-center gap-3 text-[#f0ede8]" style={{ fontFamily: 'Playfair Display, serif' }}>
+                                <h3 className="text-2xl font-serif font-bold mb-6 flex items-center gap-3 text-[#f0ede8]" style={{ fontFamily: 'Playfair Display, serif' }}>
                                     Lookout👀 ({timeframe})
                                 </h3>
                                 {aiLoading.lookout ? (
