@@ -186,32 +186,32 @@ export default function FriendsPage() {
     };
 
     return (
-        <div className="flex flex-col w-full max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans text-white pb-24 md:pb-8">
+        <div className="flex flex-col w-full max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans text-white pb-24 md:pb-8">
             <header className="px-4 mt-2 mb-6">
-                <h1 className="text-3xl font-bold tracking-tight">Friends</h1>
+                <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Friends</h1>
             </header>
 
             <div className="flex px-4 gap-2 mb-6">
                 <button
                     onClick={() => setActiveTab("friends")}
-                    className={`px-4 py-2 rounded-full text-sm font-bold transition ${activeTab === "friends" ? "bg-white text-black" : "bg-zinc-800 text-zinc-400 hover:text-white"}`}
+                    className={`px-5 py-2.5 rounded-full text-base font-bold transition ${activeTab === "friends" ? "bg-white text-black" : "bg-zinc-800 text-zinc-400 hover:text-white"}`}
                 >
                     My Friends ({friendsList.length})
                 </button>
                 <button
                     onClick={() => setActiveTab("requests")}
-                    className={`px-4 py-2 rounded-full text-sm font-bold transition flex items-center gap-2 ${activeTab === "requests" ? "bg-white text-black" : "bg-zinc-800 text-zinc-400 hover:text-white"}`}
+                    className={`px-5 py-2.5 rounded-full text-base font-bold transition flex items-center gap-2 ${activeTab === "requests" ? "bg-white text-black" : "bg-zinc-800 text-zinc-400 hover:text-white"}`}
                 >
                     Requests
                     {incomingRequests.length > 0 && (
-                        <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center">
+                        <span className="w-6 h-6 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold">
                             {incomingRequests.length}
                         </span>
                     )}
                 </button>
                 <button
                     onClick={() => setActiveTab("search")}
-                    className={`px-4 py-2 rounded-full text-sm font-bold transition flex items-center gap-2 ${activeTab === "search" ? "bg-white text-black" : "bg-zinc-800 text-zinc-400 hover:text-white"}`}
+                    className={`px-5 py-2.5 rounded-full text-base font-bold transition flex items-center gap-2 ${activeTab === "search" ? "bg-white text-black" : "bg-zinc-800 text-zinc-400 hover:text-white"}`}
                 >
                     Add Friends
                 </button>
@@ -220,23 +220,23 @@ export default function FriendsPage() {
             {activeTab === "friends" && (
                 <div className="px-4 flex flex-col gap-3">
                     {friendsList.length === 0 ? (
-                        <div className="text-center py-12 text-zinc-500 text-sm bg-[#111] rounded-2xl border border-zinc-800">
+                        <div className="text-center py-12 text-zinc-500 text-base bg-[#111] rounded-2xl border border-zinc-800">
                             You don't have any friends yet. Let's fix that!
                         </div>
                     ) : (
                         friendsList.map(f => (
-                            <div key={f.uid} onClick={() => router.push(`/profile/${f.uid}`)} className="flex items-center justify-between p-4 bg-[#111] border border-zinc-800 rounded-2xl hover:bg-zinc-800/50 transition cursor-pointer">
+                            <div key={f.uid} onClick={() => router.push(`/profile/${f.uid}`)} className="flex items-center justify-between p-5 bg-[#111] border border-zinc-800 rounded-2xl hover:bg-zinc-800/50 transition cursor-pointer">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-bold text-lg">
+                                    <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center font-bold text-xl">
                                         {(f.displayName || "A").substring(0, 1).toUpperCase()}
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="font-bold">{f.displayName || f.username || "Anonymous"}</span>
-                                        <span className="text-sm text-zinc-500">{f.handle || (f.username ? `@${f.username}` : "@user")}</span>
+                                        <span className="font-bold text-lg">{f.displayName || f.username || "Anonymous"}</span>
+                                        <span className="text-base text-zinc-500">{f.handle || (f.username ? `@${f.username}` : "@user")}</span>
                                     </div>
                                 </div>
                                 <div className="flex gap-2 items-center">
-                                    <span className="text-sm text-zinc-400 font-medium bg-zinc-800 px-3 py-1 rounded-full hidden sm:block">View Profile</span>
+                                    <span className="text-base text-zinc-400 font-medium bg-zinc-800 px-3 py-1.5 rounded-full hidden sm:block">View Profile</span>
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
@@ -257,22 +257,22 @@ export default function FriendsPage() {
             {activeTab === "requests" && (
                 <div className="px-4 flex flex-col gap-6">
                     <div>
-                        <h2 className="text-sm font-bold tracking-widest text-zinc-500 uppercase mb-3 px-2">Incoming Requests</h2>
+                        <h2 className="text-base font-bold tracking-widest text-zinc-500 uppercase mb-3 px-2">Incoming Requests</h2>
                         <div className="flex flex-col gap-3">
                             {incomingRequests.length === 0 ? (
-                                <div className="text-center py-6 text-zinc-600 text-sm bg-[#111] rounded-2xl border border-zinc-800/50">
+                                <div className="text-center py-6 text-zinc-600 text-base bg-[#111] rounded-2xl border border-zinc-800/50">
                                     No incoming requests.
                                 </div>
                             ) : (
                                 incomingRequests.map(req => (
-                                    <div key={req.id} className="flex items-center justify-between p-4 bg-[#111] border border-zinc-800 rounded-2xl">
+                                    <div key={req.id} className="flex items-center justify-between p-5 bg-[#111] border border-zinc-800 rounded-2xl">
                                         <div className="flex items-center gap-3" onClick={() => router.push(`/profile/${req.fromUid}`)}>
-                                            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-bold text-lg cursor-pointer">
+                                            <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center font-bold text-xl cursor-pointer">
                                                 {(req.sender?.displayName || "A").substring(0, 1).toUpperCase()}
                                             </div>
                                             <div className="flex flex-col cursor-pointer">
-                                                <span className="font-bold">{req.sender?.displayName || req.sender?.username || "Anonymous"}</span>
-                                                <span className="text-sm text-zinc-500">{req.sender?.handle || (req.sender?.username ? `@${req.sender?.username}` : "@user")}</span>
+                                                <span className="font-bold text-lg">{req.sender?.displayName || req.sender?.username || "Anonymous"}</span>
+                                                <span className="text-base text-zinc-500">{req.sender?.handle || (req.sender?.username ? `@${req.sender?.username}` : "@user")}</span>
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
@@ -290,25 +290,25 @@ export default function FriendsPage() {
                     </div>
 
                     <div>
-                        <h2 className="text-sm font-bold tracking-widest text-zinc-500 uppercase mb-3 px-2">Outgoing Requests</h2>
+                        <h2 className="text-base font-bold tracking-widest text-zinc-500 uppercase mb-3 px-2">Outgoing Requests</h2>
                         <div className="flex flex-col gap-3">
                             {outgoingRequests.length === 0 ? (
-                                <div className="text-center py-6 text-zinc-600 text-sm bg-[#111] rounded-2xl border border-zinc-800/50">
+                                <div className="text-center py-6 text-zinc-600 text-base bg-[#111] rounded-2xl border border-zinc-800/50">
                                     No pending outgoing requests.
                                 </div>
                             ) : (
                                 outgoingRequests.map(req => (
-                                    <div key={req.id} className="flex items-center justify-between p-4 bg-[#111] border border-zinc-800 rounded-2xl opacity-60">
+                                    <div key={req.id} className="flex items-center justify-between p-5 bg-[#111] border border-zinc-800 rounded-2xl opacity-60">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-bold text-lg">
+                                            <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center font-bold text-xl">
                                                 {(req.receiver?.displayName || "A").substring(0, 1).toUpperCase()}
                                             </div>
                                             <div className="flex flex-col">
-                                                <span className="font-bold">{req.receiver?.displayName || req.receiver?.username || "Anonymous"}</span>
-                                                <span className="text-sm text-zinc-500">{req.receiver?.handle || (req.receiver?.username ? `@${req.receiver?.username}` : "@user")}</span>
+                                                <span className="font-bold text-lg">{req.receiver?.displayName || req.receiver?.username || "Anonymous"}</span>
+                                                <span className="text-base text-zinc-500">{req.receiver?.handle || (req.receiver?.username ? `@${req.receiver?.username}` : "@user")}</span>
                                             </div>
                                         </div>
-                                        <span className="text-xs font-bold text-zinc-500 bg-zinc-800 px-3 py-1 rounded-full">Pending</span>
+                                        <span className="text-sm font-bold text-zinc-500 bg-zinc-800 px-3 py-1.5 rounded-full">Pending</span>
                                     </div>
                                 ))
                             )}
@@ -319,7 +319,7 @@ export default function FriendsPage() {
 
             {activeTab === "search" && (
                 <div className="px-4 flex flex-col gap-4">
-                    <div className="relative flex items-center bg-[#1a1a1a] border border-zinc-600/60 rounded-xl py-3 pl-4 pr-3 gap-3 transition-all focus-within:border-zinc-400 focus-within:ring-2 focus-within:ring-zinc-500/30">
+                    <div className="relative flex items-center bg-[#1a1a1a] border border-zinc-600/60 rounded-xl py-3.5 pl-4 pr-3 gap-3 transition-all focus-within:border-zinc-400 focus-within:ring-2 focus-within:ring-zinc-500/30">
                         <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         <input
                             type="text"
@@ -327,15 +327,15 @@ export default function FriendsPage() {
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                            className="flex-1 min-w-0 bg-transparent text-white placeholder-zinc-400 text-sm focus:outline-none"
+                            className="flex-1 min-w-0 bg-transparent text-white placeholder-zinc-400 text-base focus:outline-none"
                         />
-                        <button onClick={handleSearch} className="text-xs font-bold bg-white text-black px-3 py-1.5 rounded-lg hover:bg-zinc-200 transition">
+                        <button onClick={handleSearch} className="text-sm font-bold bg-white text-black px-4 py-2 rounded-lg hover:bg-zinc-200 transition">
                             {isSearching ? "..." : "Search"}
                         </button>
                     </div>
 
                     {searchError && (
-                        <div className="bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-3 rounded-lg text-sm break-all">
+                        <div className="bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-3 rounded-lg text-base break-all">
                             <strong>Error:</strong> {searchError}
                         </div>
                     )}
@@ -346,25 +346,25 @@ export default function FriendsPage() {
                             const hasPendingOutgoing = outgoingRequests.some(r => r.toUid === user.uid);
 
                             return (
-                                <div key={user.uid} className="flex items-center justify-between p-4 bg-[#111] border border-zinc-800 rounded-2xl">
+                                <div key={user.uid} className="flex items-center justify-between p-5 bg-[#111] border border-zinc-800 rounded-2xl">
                                     <div className="flex items-center gap-3 cursor-pointer" onClick={() => router.push(`/profile/${user.uid}`)}>
-                                        <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-bold text-lg">
+                                        <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center font-bold text-xl">
                                             {(user.displayName || "A").substring(0, 1).toUpperCase()}
                                         </div>
                                         <div className="flex flex-col">
-                                            <span className="font-bold">{user.displayName || user.username || "Anonymous"}</span>
-                                            <span className="text-sm text-zinc-500">{user.handle || (user.username ? `@${user.username}` : "@user")}</span>
+                                            <span className="font-bold text-lg">{user.displayName || user.username || "Anonymous"}</span>
+                                            <span className="text-base text-zinc-500">{user.handle || (user.username ? `@${user.username}` : "@user")}</span>
                                         </div>
                                     </div>
 
                                     {isFriend ? (
-                                        <span className="text-xs font-bold text-[#00c805] bg-[#00c805]/10 px-3 py-1.5 rounded-lg border border-[#00c805]/20">Friends</span>
+                                        <span className="text-sm font-bold text-[#00c805] bg-[#00c805]/10 px-4 py-2 rounded-lg border border-[#00c805]/20">Friends</span>
                                     ) : hasPendingOutgoing ? (
-                                        <span className="text-xs font-bold text-zinc-400 bg-zinc-800 px-3 py-1.5 rounded-lg border border-zinc-700">Requested</span>
+                                        <span className="text-sm font-bold text-zinc-400 bg-zinc-800 px-4 py-2 rounded-lg border border-zinc-700">Requested</span>
                                     ) : (
                                         <button
                                             onClick={() => sendRequest(user.uid)}
-                                            className="text-xs font-bold bg-white text-black hover:bg-zinc-200 px-3 py-1.5 rounded-lg transition"
+                                            className="text-sm font-bold bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg transition"
                                         >
                                             Add Friend
                                         </button>
@@ -387,7 +387,7 @@ export default function FriendsPage() {
                                 </svg>
                             </div>
                             <h3 className="text-xl font-bold text-white mb-2">Remove Friend?</h3>
-                            <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
+                            <p className="text-zinc-400 text-base mb-6 leading-relaxed">
                                 Are you sure you want to unfriend <strong className="text-white">{userToUnfriend.displayName || userToUnfriend.username}</strong>? You will no longer be able to see each other's private portfolios or friends-only posts.
                             </p>
 
