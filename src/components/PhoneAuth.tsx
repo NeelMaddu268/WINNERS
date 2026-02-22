@@ -130,11 +130,11 @@ export default function PhoneAuth() {
 
 
     return (
-        <div className="w-full flex flex-col gap-4">
-            <h2 className="text-2xl font-bold mb-2 text-center text-zinc-900 dark:text-zinc-100">Phone Login</h2>
+        <div className="w-full flex flex-col gap-6">
+            <h2 className="text-3xl font-serif font-bold mb-4 text-center text-[#f0ede8]" style={{ fontFamily: 'Playfair Display, serif' }}>Phone Login</h2>
 
             {error && (
-                <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-md text-sm">
+                <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl text-sm">
                     {error}
                 </div>
             )}
@@ -142,16 +142,16 @@ export default function PhoneAuth() {
             <div id="recaptcha-container"></div>
 
             {!confirmationResult ? (
-                <form onSubmit={handleSendCode} className="flex flex-col gap-4">
+                <form onSubmit={handleSendCode} className="flex flex-col gap-5">
                     <div>
-                        <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300" htmlFor="phone">
+                        <label className="block text-xs uppercase tracking-wider font-bold mb-2 text-[#a8a8a0]" htmlFor="phone">
                             Phone Number
                         </label>
                         <div className="flex w-full">
                             <select
                                 value={countryCode}
                                 onChange={(e) => setCountryCode(e.target.value)}
-                                className="px-3 py-2 border border-r-0 border-gray-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 rounded-l-md text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-24"
+                                className="px-4 py-3 border border-r-0 border-[#2a3d30] bg-[#1a2a22] rounded-l-xl text-white focus:outline-none focus:border-[#4ade9a] focus:ring-1 focus:ring-[#4ade9a] w-28 appearance-none cursor-pointer"
                             >
                                 <option value="+1">🇺🇸 +1</option>
                                 <option value="+44">🇬🇧 +44</option>
@@ -164,7 +164,7 @@ export default function PhoneAuth() {
                                 value={phoneNumber}
                                 onChange={(e) => setPhoneNumber(e.target.value)}
                                 placeholder="(555) 000-0000"
-                                className="flex-1 w-full px-3 py-2 border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-r-md text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="flex-1 w-full px-4 py-3 border border-[#2a3d30] bg-[#1a2a22] rounded-r-xl text-white placeholder-[#a8a8a0]/50 focus:outline-none focus:border-[#4ade9a] focus:ring-1 focus:ring-[#4ade9a] transition-colors"
                                 required
                             />
                         </div>
@@ -172,15 +172,15 @@ export default function PhoneAuth() {
                     <button
                         type="submit"
                         disabled={loading || !phoneNumber}
-                        className="w-full bg-blue-600 text-white font-medium py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
+                        className="w-full mt-2 bg-[#4ade9a] text-black font-bold py-3.5 rounded-xl hover:bg-[#22c55e] focus:outline-none focus:ring-2 focus:ring-[#4ade9a] focus:ring-offset-2 focus:ring-offset-[#111c18] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_15px_rgba(74,222,154,0.2)]"
                     >
                         {loading ? "Sending..." : "Send Verification Code"}
                     </button>
                 </form>
             ) : (
-                <form onSubmit={handleVerifyCode} className="flex flex-col gap-4">
+                <form onSubmit={handleVerifyCode} className="flex flex-col gap-5">
                     <div>
-                        <label className="block text-sm font-medium mb-1 text-zinc-700 dark:text-zinc-300" htmlFor="code">
+                        <label className="block text-xs uppercase tracking-wider font-bold mb-2 text-[#a8a8a0]" htmlFor="code">
                             6-Digit Verification Code
                         </label>
                         <input
@@ -189,7 +189,7 @@ export default function PhoneAuth() {
                             value={verificationCode}
                             onChange={(e) => setVerificationCode(e.target.value)}
                             placeholder="123456"
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-md text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-center tracking-widest text-lg"
+                            className="w-full px-4 py-4 border border-[#2a3d30] bg-[#1a2a22] rounded-xl text-white placeholder-[#a8a8a0]/30 focus:outline-none focus:border-[#4ade9a] focus:ring-1 focus:ring-[#4ade9a] text-center tracking-[0.5em] text-2xl font-medium transition-colors"
                             maxLength={6}
                             required
                         />
@@ -197,7 +197,7 @@ export default function PhoneAuth() {
                     <button
                         type="submit"
                         disabled={loading || !verificationCode}
-                        className="w-full bg-blue-600 text-white font-medium py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
+                        className="w-full mt-2 bg-[#4ade9a] text-black font-bold py-3.5 rounded-xl hover:bg-[#22c55e] focus:outline-none focus:ring-2 focus:ring-[#4ade9a] focus:ring-offset-2 focus:ring-offset-[#111c18] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_15px_rgba(74,222,154,0.2)]"
                     >
                         {loading ? "Verifying..." : "Verify Code"}
                     </button>
