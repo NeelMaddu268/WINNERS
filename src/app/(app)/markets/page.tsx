@@ -255,24 +255,21 @@ export default function MarketsPage() {
     };
 
     return (
-        <div className="flex flex-col w-full animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans text-[#f0ede8] pb-24 md:pb-8 max-w-4xl mx-auto gap-0">
-            {/* ── Page Header ── */}
-            <header className="px-4 mt-2 mb-4">
-                <h1 className="text-5xl md:text-6xl font-serif font-bold tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>
+        <div className="flex flex-col w-full max-w-4xl mx-auto animate-in fade-in duration-500 font-sans text-[#f0ede8] pb-24 md:pb-8 gap-0 px-4 sm:px-6 lg:px-8">
+            <header className="mb-6 border-b border-[#2a3d30]/50 pb-6">
+                <h1 className="font-page-title text-[#f0ede8]">
                     Markets
                 </h1>
             </header>
 
-            {/* ── Big Three Indices ── */}
-            <div className="px-4 mt-2">
+            <div className="mt-2">
                 <h2 className="text-sm font-bold tracking-widest text-[#a8a8a0] uppercase mb-3">Market Overview</h2>
                 <div className="flex gap-2.5">
                     {indices.map(c => <IndexCardComponent key={c.symbol} card={c} />)}
                 </div>
             </div>
 
-            {/* ── Market Breadth ── */}
-            <div className="px-4 mt-4">
+            <div className="mt-4">
                 <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-6 shadow-lg">
                     <div className="flex justify-between items-center mb-2">
                         <span className="text-sm font-bold tracking-widest text-[#a8a8a0] uppercase">Market Breadth</span>
@@ -296,8 +293,7 @@ export default function MarketsPage() {
                 </div>
             </div>
 
-            {/* ── Fear & Greed ── */}
-            <div className="px-4 mt-4">
+            <div className="mt-4">
                 <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-6 shadow-lg">
                     <div className="flex justify-between items-center mb-3">
                         <span className="text-sm font-bold tracking-widest text-[#a8a8a0] uppercase">Fear &amp; Greed Index</span>
@@ -317,8 +313,7 @@ export default function MarketsPage() {
                 </div>
             </div>
 
-            {/* ── Search Bar ── */}
-            <div ref={searchRef} className="relative px-4 mt-5">
+            <div ref={searchRef} className="relative mt-5">
                 <div className="relative flex items-center bg-[#1a2a22] border border-[#2a3d30] rounded-xl py-3 pl-4 pr-3 gap-3 transition-all focus-within:border-[#4ade9a]/50 focus-within:ring-2 focus-within:ring-[#4ade9a]/20">
                     <span className="text-[#a8a8a0] shrink-0">
                         {isSearching ? (
@@ -358,8 +353,7 @@ export default function MarketsPage() {
                 )}
             </div>
 
-            {/* ── Quick Watchlist ── */}
-            <div className="px-4 mt-5">
+            <div className="mt-5">
                 <h2 className="text-sm font-bold tracking-widest text-[#a8a8a0] uppercase mb-3">Quick Watch</h2>
                 <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                     {watchlistData.length === 0
@@ -381,8 +375,7 @@ export default function MarketsPage() {
                 </div>
             </div>
 
-            {/* ── Discovery Lists ── */}
-            <div className="px-4 mt-5">
+            <div className="mt-5">
                 <h2 className="text-sm font-bold tracking-widest text-[#a8a8a0] uppercase mb-3">High-Velocity Discovery</h2>
                 {/* Tab bar */}
                 <div className="relative flex rounded-full bg-[#1a2a22] border border-[#2a3d30] p-1.5 mb-3">
@@ -417,8 +410,7 @@ export default function MarketsPage() {
                 </div>
             </div>
 
-            {/* ── Sector Performance Heatmap ── */}
-            <div className="px-4 mt-5">
+            <div className="mt-5">
                 <h2 className="text-base font-bold tracking-widest text-[#a8a8a0] uppercase mb-3">Sector Performance</h2>
                 <div className="grid grid-cols-3 gap-3">
                     {(sectors.length === 0 ? Array(11).fill(null) : sectors).map((s, i) =>
@@ -440,8 +432,7 @@ export default function MarketsPage() {
                 </div>
             </div>
 
-            {/* ── Events Calendar ── */}
-            <div className="px-4 mt-5">
+            <div className="mt-5">
                 <h2 className="text-base font-bold tracking-widest text-[#a8a8a0] uppercase mb-1">Live Events</h2>
                 <p className="text-base text-[#a8a8a0] mb-3">{today}</p>
 

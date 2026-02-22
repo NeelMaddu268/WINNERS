@@ -345,13 +345,10 @@ export default function PortfolioPage() {
     }, []);
 
     return (
-        <div className="min-h-screen bg-[#0d1a14]">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="flex flex-col gap-6 w-full animate-in fade-in slide-in-from-bottom-4 duration-700 font-sans text-[#f0ede8]">
-                    {/* Header */}
-                    <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 border-b border-[#2a3d30]/50 pb-6">
+        <div className="w-full flex flex-col gap-6 animate-in fade-in duration-500 font-sans text-[#f0ede8] px-4 sm:px-6 lg:px-8">
+                    <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 border-b border-[#2a3d30]/50 pb-6 mb-0">
                         <div>
-                            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-serif font-bold tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>
+                            <h1 className="font-page-title text-[#f0ede8]">
                                 Portfolio
                             </h1>
                             <p className="text-[#a8a8a0] text-sm mt-2">Track your investments and performance</p>
@@ -750,8 +747,6 @@ export default function PortfolioPage() {
                             </div>
                         </BentoGrid>
                     </div>
-                </div>
-            </div>
         </div>
     );
 }

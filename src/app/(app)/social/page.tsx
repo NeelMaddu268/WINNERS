@@ -202,10 +202,10 @@ export default function SocialPage() {
     };
 
     return (
-        <div className="flex flex-col w-full animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans text-[#f0ede8] pb-24 max-w-2xl mx-auto px-4 mt-2">
+        <div className="flex flex-col w-full max-w-4xl mx-auto animate-in fade-in duration-500 font-sans text-[#f0ede8] pb-24 px-4 sm:px-6 lg:px-8">
             <header className="flex justify-between items-end border-b border-[#2a3d30]/50 pb-6 mb-6">
                 <div>
-                    <h1 className="text-4xl md:text-5xl font-serif font-bold tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>
+                    <h1 className="font-page-title text-[#f0ede8]">
                         The Feed
                     </h1>
                     <p className="text-[#a8a8a0] mt-2 text-lg">Market moves from your inner circle.</p>
