@@ -89,6 +89,18 @@ export default function SocialPage() {
         loadSelectedUser();
     }, [selectedFriend, currentUser, myFriends]);
 
+    // Lock body scroll when mini profile modal is open
+    useEffect(() => {
+        if (selectedFriend) {
+            document.body.style.overflow = "hidden";
+        } else {
+            document.body.style.overflow = "";
+        }
+        return () => {
+            document.body.style.overflow = "";
+        };
+    }, [selectedFriend]);
+
     useEffect(() => {
         const feedRef = collection(db, "global_feed");
         const q = query(feedRef, orderBy("timestamp", "desc"));
@@ -385,80 +397,78 @@ export default function SocialPage() {
 
             {/* Friend Profile Popup Modal */}
             {selectedFriend && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
-                    <div className="bg-[#0a100d] border border-[#2a3d30]/80 rounded-[2rem] w-full max-w-sm shadow-[0_0_50px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-300 overflow-hidden relative group">
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0d1a14]/85 backdrop-blur-md p-4 overflow-y-auto overscroll-none">
+                    <div className="bg-[#111c18] border border-[#2a3d30] rounded-[2rem] w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-300 overflow-hidden relative group my-auto">
 
-                        {/* Glassmorphism Header Banner */}
-                        <div className={`h-32 w-full ${selectedFriend.color} opacity-40 relative overflow-hidden`}>
-                            <div className="absolute inset-0 bg-gradient-to-t from-[#0a100d] to-transparent"></div>
-                            {/* Decorative particles */}
-                            <div className="absolute top-4 left-1/4 w-32 h-32 bg-white/20 rounded-full blur-3xl mix-blend-overlay"></div>
+                        {/* Header Banner - green theme */}
+                        <div className="h-28 w-full bg-gradient-to-br from-[#1a2a22] to-[#0d1a14] relative overflow-hidden border-b border-[#2a3d30]">
+                            <div className="absolute inset-0 bg-[#4ade9a]/5"></div>
+                            <div className="absolute top-4 right-4 w-24 h-24 bg-[#4ade9a]/10 rounded-full blur-2xl"></div>
+                            <div className="absolute bottom-4 left-1/4 w-20 h-20 bg-[#4ade9a]/5 rounded-full blur-xl"></div>
                         </div>
 
                         {/* Profile Content */}
                         <div className="px-6 pb-8 relative -mt-8">
-                            {/* Avatar pushing up into banner with glow */}
+                            {/* Avatar */}
                             <div className="absolute -top-12 left-6">
-                                <div className={`w-24 h-24 rounded-full ${selectedFriend.color} border-4 border-[#0a100d] flex items-center justify-center font-bold text-white text-4xl shadow-[0_0_20px_rgba(255,255,255,0.2)] relative z-10`}>
+                                <div className={`w-24 h-24 rounded-full ${selectedFriend.color || "bg-[#4ade9a]"} border-4 border-[#111c18] flex items-center justify-center font-bold text-white text-4xl shadow-lg relative z-10`}>
                                     {selectedFriend.avatar}
                                 </div>
                             </div>
 
                             {/* Close Button */}
-                            <button onClick={() => setSelectedFriend(null)} className="absolute top-0 right-4 -translate-y-[4.5rem] text-zinc-400 hover:text-white bg-black/40 backdrop-blur-md hover:bg-black/60 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 transition z-20">
+                            <button onClick={() => setSelectedFriend(null)} className="absolute top-0 right-4 -translate-y-[4.5rem] text-[#a8a8a0] hover:text-[#f0ede8] bg-[#1a2a22] hover:bg-[#2a3d30] w-10 h-10 rounded-full flex items-center justify-center border border-[#2a3d30] transition z-20">
                                 ✕
                             </button>
 
-                            {/* Correct margin to clear the absolute positioned avatar properly (pt-20 gives ~5rem clearance) */}
                             <div className="pt-20">
-                                <h3 className="text-3xl font-serif font-bold text-white tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>{selectedUserDoc?.displayName || selectedUserDoc?.username || selectedFriend.name}</h3>
-                                <div className="flex items-center gap-3 mt-1">
-                                    <p className="text-[#00c805] font-semibold tracking-wide flex items-center gap-1.5">
+                                <h3 className="text-2xl font-serif font-bold text-[#f0ede8] tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>{selectedUserDoc?.displayName || selectedUserDoc?.username || selectedFriend.name}</h3>
+                                <div className="flex items-center gap-3 mt-1 flex-wrap">
+                                    <p className="text-[#4ade9a] font-semibold tracking-wide flex items-center gap-1.5">
                                         {selectedUserDoc?.handle || (selectedUserDoc?.username ? `@${selectedUserDoc.username}` : selectedFriend.handle)}
-                                        {selectedFriend.status === "Online" && <span className="w-2 h-2 rounded-full bg-[#00c805] shadow-[0_0_10px_#00c805] animate-pulse relative inline-block"></span>}
+                                        {selectedFriend.status === "Online" && <span className="w-2 h-2 rounded-full bg-[#4ade9a] shadow-[0_0_10px_#4ade9a] animate-pulse"></span>}
                                     </p>
-                                    {isFriend && <span className="text-xs bg-[#00c805]/20 text-[#00c805] px-2 py-0.5 rounded-full font-bold">Friend</span>}
-                                    {!isFriend && isPublic && <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full font-bold">Public</span>}
-                                    {!isFriend && !isPublic && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full font-bold">Private</span>}
+                                    {isFriend && <span className="text-xs bg-[#4ade9a]/20 text-[#4ade9a] px-2 py-0.5 rounded-full font-bold border border-[#4ade9a]/30">Friend</span>}
+                                    {!isFriend && isPublic && <span className="text-xs bg-[#4ade9a]/10 text-[#4ade9a] px-2 py-0.5 rounded-full font-bold border border-[#4ade9a]/20">Public</span>}
+                                    {!isFriend && !isPublic && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full font-bold border border-red-500/30">Private</span>}
                                 </div>
                             </div>
 
                             {/* Stats */}
                             <div className="mt-8 grid grid-cols-2 gap-4">
-                                <div className="bg-gradient-to-br from-[#1a2a22] to-[#111c18] border border-[#2a3d30]/60 rounded-2xl p-4 text-center shadow-inner hover:border-[#4ade9a]/30 transition-colors">
-                                    <div className="text-3xl font-bold text-white drop-shadow-md">{selectedUserDoc?.friends?.length || 0}</div>
-                                    <div className="text-xs text-[#4ade9a] font-bold uppercase tracking-widest mt-1 opacity-80">Friends</div>
+                                <div className="bg-[#1a2a22] border border-[#2a3d30] rounded-2xl p-4 text-center hover:border-[#4ade9a]/30 transition-colors">
+                                    <div className="text-3xl font-bold text-[#f0ede8]">{selectedUserDoc?.friends?.length || 0}</div>
+                                    <div className="text-xs text-[#4ade9a] font-bold uppercase tracking-widest mt-1">Friends</div>
                                 </div>
-                                <div className="bg-gradient-to-br from-[#1a2a22] to-[#111c18] border border-[#2a3d30]/60 rounded-2xl p-4 text-center shadow-inner hover:border-[#4ade9a]/30 transition-colors">
-                                    <div className="text-3xl font-bold text-white drop-shadow-md">{selectedUserHoldings.length || 0}</div>
-                                    <div className="text-xs text-[#4ade9a] font-bold uppercase tracking-widest mt-1 opacity-80">Assets</div>
+                                <div className="bg-[#1a2a22] border border-[#2a3d30] rounded-2xl p-4 text-center hover:border-[#4ade9a]/30 transition-colors">
+                                    <div className="text-3xl font-bold text-[#f0ede8]">{selectedUserHoldings.length || 0}</div>
+                                    <div className="text-xs text-[#4ade9a] font-bold uppercase tracking-widest mt-1">Assets</div>
                                 </div>
                             </div>
 
                             {/* Top Holdings */}
                             <div className="mt-8 pt-6 border-t border-[#2a3d30]/50">
                                 <h4 className="font-bold text-[#a8a8a0] text-sm mb-4 uppercase tracking-widest flex items-center gap-2">
-                                    Top Holdings <span className="text-[#00c805]">★</span>
+                                    Top Holdings <span className="text-[#4ade9a]">★</span>
                                 </h4>
                                 <div className="flex flex-wrap gap-2.5">
                                     {(!isFriend && !isPublic) ? (
-                                        <div className="text-sm text-zinc-500 italic">Portfolio is private 🔒</div>
+                                        <div className="text-sm text-[#a8a8a0] italic">Portfolio is private 🔒</div>
                                     ) : selectedUserHoldings.length > 0 ? (
                                         selectedUserHoldings.slice(0, 3).map((ticker, idx) => (
-                                            <span key={ticker} className={`${idx === 0 ? 'bg-[#00c805]/10 border-[#00c805]/30 text-[#00c805] shadow-[0_0_10px_rgba(0,200,5,0.05)]' : (idx === 1 ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.05)]' : 'bg-white/5 border-white/20 text-white')} border px-4 py-2 rounded-xl text-sm font-bold tracking-wide`}>
+                                            <span key={ticker} className={`${idx === 0 ? 'bg-[#4ade9a]/15 border-[#4ade9a]/30 text-[#4ade9a]' : 'bg-[#1a2a22] border-[#2a3d30] text-[#f0ede8]'} border px-4 py-2 rounded-xl text-sm font-bold tracking-wide`}>
                                                 {ticker}
                                             </span>
                                         ))
                                     ) : (
-                                        <div className="text-sm text-zinc-500 italic">No current holdings</div>
+                                        <div className="text-sm text-[#a8a8a0] italic">No current holdings</div>
                                     )}
                                 </div>
                             </div>
 
                             {/* Action Button */}
-                            <button onClick={() => router.push(`/profile/${selectedFriend.uid}`)} className="w-full mt-10 py-4 bg-gradient-to-r from-[#1a2a22] to-[#111c18] hover:from-[#2a3d30] hover:to-[#1a2a22] text-white border border-[#4ade9a]/30 rounded-2xl font-bold tracking-wide transition-all shadow-[0_5px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_0_20px_rgba(74,222,154,0.15)] group relative overflow-hidden">
-                                <span className="relative z-10">View Full Profile</span>
-                                <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
+                            <button onClick={() => router.push(`/profile/${selectedFriend.uid}`)} className="w-full mt-10 py-4 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-2xl font-bold tracking-wide transition-all">
+                                View Full Profile
                             </button>
                         </div>
                     </div>
