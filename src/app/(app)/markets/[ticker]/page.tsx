@@ -500,7 +500,7 @@ export default function TickerPage() {
     return (
         <div className="flex flex-col w-full animate-in fade-in duration-500 font-sans text-[#f0ede8] pb-24 md:pb-8 max-w-2xl mx-auto">
             {/* Header with Back Button */}
-            <div className="sticky top-16 bg-[#0d1a14]/95 backdrop-blur-xl z-40 px-4 py-4 flex justify-between items-center border-b border-[#2a3d30]/50">
+            <div className="px-4 py-4 flex justify-between items-center border-b border-[#2a3d30]/50">
                 <Link
                     href="/markets"
                     className="text-[#f0ede8] w-10 h-10 flex items-center justify-center rounded-full bg-[#1a2a22] hover:bg-[#1f2f25] transition border border-[#2a3d30]/50"

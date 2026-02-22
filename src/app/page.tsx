@@ -89,12 +89,35 @@ export default function Home() {
     const [activeStep, setActiveStep] = useState(0);
     const [cycleWord, setCycleWord] = useState(0);
     const cycleWords = ['freedom', 'confidence', 'success', 'wealth', 'growth'];
+    const [showContent, setShowContent] = useState(false);
+    const [animationPhase, setAnimationPhase] = useState<'initial' | 'letters' | 'complete'>('initial');
 
     useEffect(() => {
         const interval = setInterval(() => {
             setCycleWord(prev => (prev + 1) % 5);
         }, 2200);
         return () => clearInterval(interval);
+    }, []);
+
+    // Initial animation sequence - letters slide in from left to right
+    useEffect(() => {
+        const timer1 = setTimeout(() => {
+            setAnimationPhase('letters');
+        }, 300); // Start letters immediately after a short delay
+        
+        const timer2 = setTimeout(() => {
+            setAnimationPhase('complete');
+        }, 1200); // Complete letter animation faster
+        
+        const timer3 = setTimeout(() => {
+            setShowContent(true);
+        }, 2000); // Show full content after 2 seconds total
+        
+        return () => {
+            clearTimeout(timer1);
+            clearTimeout(timer2);
+            clearTimeout(timer3);
+        };
     }, []);
     const [particles, setParticles] = useState<any[]>([]);
     const [tickerItems, setTickerItems] = useState(defaultTickerItems);
@@ -180,17 +203,112 @@ export default function Home() {
 
     return (
         <div className="bg-gradient-to-br from-[#0d1a14] via-[#111c18] to-[#0d1f1a] text-[#f0ede8] relative">
-            {/* Particle star field canvas */}
-            <canvas ref={canvasRef} className="fixed inset-0 w-full h-full pointer-events-none z-0" />
-            {/* Cursor glow */}
-            <div ref={glowRef} className="fixed top-0 left-0 w-[450px] h-[450px] pointer-events-none z-0 rounded-full" style={{ background: 'radial-gradient(circle, rgba(74,222,154,0.05) 0%, transparent 70%)', filter: 'blur(40px)' }}></div>
+            {/* Initial CashMere display with sliding letters */}
+            {!showContent && (
+                <div className="fixed inset-0 flex items-center justify-center z-50 bg-gradient-to-br from-[#0d1a14] via-[#111c18] to-[#0d1f1a]">
+                    <div className="text-center px-8 py-16">
+                        <div className="relative">
+                            <div className="flex items-center justify-center text-7xl md:text-8xl font-black tracking-tight text-white" style={{ textShadow: '0 0 30px #4ade9a, 0 0 60px rgba(74,222,154,0.4), 0 0 90px rgba(74,222,154,0.2)' }}>
+                                <span 
+                                    className={`inline-block transition-all duration-500 ease-out ${
+                                        animationPhase === 'initial' 
+                                            ? 'transform -translate-x-full opacity-0' 
+                                            : 'transform translate-x-0 opacity-100'
+                                    }`}
+                                    style={{ transitionDelay: '0ms' }}
+                                >
+                                    C
+                                </span>
+                                <span 
+                                    className={`inline-block transition-all duration-500 ease-out ${
+                                        animationPhase === 'initial' 
+                                            ? 'transform -translate-x-full opacity-0' 
+                                            : 'transform translate-x-0 opacity-100'
+                                    }`}
+                                    style={{ transitionDelay: '80ms' }}
+                                >
+                                    a
+                                </span>
+                                <span 
+                                    className={`inline-block transition-all duration-500 ease-out ${
+                                        animationPhase === 'initial' 
+                                            ? 'transform -translate-x-full opacity-0' 
+                                            : 'transform translate-x-0 opacity-100'
+                                    }`}
+                                    style={{ transitionDelay: '160ms' }}
+                                >
+                                    s
+                                </span>
+                                <span 
+                                    className={`inline-block transition-all duration-500 ease-out ${
+                                        animationPhase === 'initial' 
+                                            ? 'transform -translate-x-full opacity-0' 
+                                            : 'transform translate-x-0 opacity-100'
+                                    }`}
+                                    style={{ transitionDelay: '240ms' }}
+                                >
+                                    h
+                                </span>
+                                <span 
+                                    className={`inline-block transition-all duration-500 ease-out text-[#4ade9a] ${
+                                        animationPhase === 'initial' 
+                                            ? 'transform -translate-x-full opacity-0' 
+                                            : 'transform translate-x-0 opacity-100'
+                                    }`}
+                                    style={{ 
+                                        transitionDelay: '320ms',
+                                        textShadow: '0 0 40px #4ade9a, 0 0 80px rgba(74,222,154,0.6), 0 0 120px rgba(74,222,154,0.3)'
+                                    }}
+                                >
+                                    M
+                                </span>
+                                <span 
+                                    className={`inline-block transition-all duration-500 ease-out ${
+                                        animationPhase === 'initial' 
+                                            ? 'transform -translate-x-full opacity-0' 
+                                            : 'transform translate-x-0 opacity-100'
+                                    }`}
+                                    style={{ transitionDelay: '400ms' }}
+                                >
+                                    e
+                                </span>
+                                <span 
+                                    className={`inline-block transition-all duration-500 ease-out ${
+                                        animationPhase === 'initial' 
+                                            ? 'transform -translate-x-full opacity-0' 
+                                            : 'transform translate-x-0 opacity-100'
+                                    }`}
+                                    style={{ transitionDelay: '480ms' }}
+                                >
+                                    r
+                                </span>
+                                <span 
+                                    className={`inline-block transition-all duration-500 ease-out ${
+                                        animationPhase === 'initial' 
+                                            ? 'transform -translate-x-full opacity-0' 
+                                            : 'transform translate-x-0 opacity-100'
+                                    }`}
+                                    style={{ transitionDelay: '560ms' }}
+                                >
+                                    e
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
-            <div className="fixed inset-0 pointer-events-none z-0">
+            {/* Particle star field canvas */}
+            <canvas ref={canvasRef} className={`fixed inset-0 w-full h-full pointer-events-none z-0 transition-opacity duration-1000 ${showContent ? 'opacity-100' : 'opacity-0'}`} />
+            {/* Cursor glow */}
+            <div ref={glowRef} className={`fixed top-0 left-0 w-[450px] h-[450px] pointer-events-none z-0 rounded-full transition-opacity duration-1000 ${showContent ? 'opacity-100' : 'opacity-0'}`} style={{ background: 'radial-gradient(circle, rgba(74,222,154,0.05) 0%, transparent 70%)', filter: 'blur(40px)' }}></div>
+
+            <div className={`fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
                 <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[#4ade9a]/5 rounded-full blur-3xl"></div>
             </div>
 
             {/* Nav */}
-            <nav className="fixed top-0 w-full z-50 bg-[#0d1a14]/80 backdrop-blur-md border-b border-[#2a3d30]/50">
+            <nav className={`fixed top-0 w-full z-50 bg-[#0d1a14]/80 backdrop-blur-md border-b border-[#2a3d30]/50 transition-all duration-1000 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
                 <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-[#4ade9a] rounded-lg flex items-center justify-center">
@@ -198,14 +316,14 @@ export default function Home() {
                         </div>
                         <span className="font-semibold text-lg tracking-tight">CashMere</span>
                     </div>
-                    <Link href="/login" className="px-6 py-2 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-full text-sm font-semibold transition animate-btnPulse">Continue</Link>
+                    <Link href="/login" className={`px-6 py-2 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-full text-sm font-semibold transition animate-btnPulse duration-1000 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>Continue</Link>
                 </div>
             </nav>
 
             {/* 1. Hero — Floating Symbols */}
             <section className="relative h-screen flex flex-col items-center justify-center overflow-hidden">
                 {/* Floating financial symbols background */}
-                <div className="absolute inset-0 pointer-events-none">
+                <div className={`absolute inset-0 pointer-events-none transition-opacity duration-1000 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
                     {particles.length > 0 && particles.map((p, i) => (
                         <span
                             key={i}
@@ -217,47 +335,66 @@ export default function Home() {
                                 opacity: 0,
                                 color: p.symbol.startsWith('+') || p.symbol === '▲' ? '#4ade9a' :
                                        p.symbol.startsWith('-') || p.symbol === '▼' ? '#f87171' : '#f0ede8',
-                                animation: `floatSymbol ${p.duration}s ease-in-out ${p.delay}s infinite, symbolFadeIn 1.5s ease ${p.fadeDelay}s forwards`,
+                                animation: showContent ? `floatSymbol ${p.duration}s ease-in-out ${p.delay}s infinite, symbolFadeIn 1.5s ease ${p.fadeDelay}s forwards` : 'none',
                             }}
                         >
                             {p.symbol}
                         </span>
                     ))}
+                    
+                    {/* Additional floating elements */}
+                    {showContent && ['💰', '📈', '🚀', '💎', '⚡', '🎯'].map((emoji, i) => (
+                        <span
+                            key={`emoji-${i}`}
+                            className="absolute select-none text-2xl opacity-20"
+                            style={{
+                                top: `${20 + (i * 15) % 60}%`,
+                                left: `${15 + (i * 20) % 70}%`,
+                                animation: `floatSymbol ${12 + (i % 3) * 3}s ease-in-out ${i * 1.2}s infinite, symbolFadeIn 2s ease ${i * 0.3 + 1}s forwards`,
+                            }}
+                        >
+                            {emoji}
+                        </span>
+                    ))}
                 </div>
 
                 {/* Radial glow behind headline */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#4ade9a]/5 rounded-full blur-[120px]"></div>
+                <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#4ade9a]/5 rounded-full blur-[120px] transition-opacity duration-1000 ${showContent ? 'opacity-100' : 'opacity-0'}`}></div>
 
                 {/* Hero content */}
-                <div className="relative z-10 text-center max-w-4xl mx-auto px-6">
-                    <AnimateIn>
-                        <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1a2a22]/80 border border-[#2a3d30] rounded-full mb-8 backdrop-blur-sm">
-                            <div className="w-2 h-2 bg-[#4ade9a] rounded-full animate-pulse"></div>
-                            <span className="text-xs text-[#a8a8a0] font-medium tracking-wide uppercase">Our Capital, Your Success</span>
-                        </div>
-                    </AnimateIn>
-                    <AnimateIn delay={0.15}>
-                        <h1 className="text-7xl md:text-8xl lg:text-9xl font-black mb-6 leading-[0.9] tracking-tight text-white" style={{ textShadow: '0 0 40px #4ade9a, 0 0 80px rgba(74,222,154,0.35), 0 0 120px rgba(74,222,154,0.15)' }}>
-                            Invest with<br />Confidence
-                        </h1>
-                    </AnimateIn>
-                    <AnimateIn delay={0.3}>
-                        <p className="text-lg md:text-xl text-[#a8a8a0] mb-12 max-w-2xl mx-auto leading-relaxed">
-                            Build wealth with institutional-grade tools, real-time insights, and a platform designed for serious investors.
-                        </p>
-                    </AnimateIn>
-                    <AnimateIn delay={0.45}>
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                            <Link href="/login" className="px-8 py-3.5 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-full font-semibold transition-all duration-300 transform hover:scale-105 animate-btnPulse">Get Started</Link>
-                            <button onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })} className="w-12 h-12 border border-[#2a3d30] hover:border-[#4ade9a] rounded-full font-semibold transition-all duration-300 flex items-center justify-center group hover:bg-[#4ade9a]/10">
-                                <span className="text-lg group-hover:translate-y-1 transition">&darr;</span>
-                            </button>
-                        </div>
-                    </AnimateIn>
+                <div className={`relative z-10 text-center max-w-4xl mx-auto px-6 transition-all duration-1000 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+                    {showContent && (
+                        <>
+                            <AnimateIn>
+                                <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1a2a22]/80 border border-[#2a3d30] rounded-full mb-8 backdrop-blur-sm">
+                                    <div className="w-2 h-2 bg-[#4ade9a] rounded-full animate-pulse"></div>
+                                    <span className="text-xs text-[#a8a8a0] font-medium tracking-wide uppercase">Our Capital, Your Success</span>
+                                </div>
+                            </AnimateIn>
+                            <AnimateIn delay={0.15}>
+                                <h1 className="text-7xl md:text-8xl lg:text-9xl font-black mb-6 leading-[0.9] tracking-tight text-white" style={{ textShadow: '0 0 40px #4ade9a, 0 0 80px rgba(74,222,154,0.35), 0 0 120px rgba(74,222,154,0.15)' }}>
+                                    Invest with<br />Confidence
+                                </h1>
+                            </AnimateIn>
+                            <AnimateIn delay={0.3}>
+                                <p className="text-lg md:text-xl text-[#a8a8a0] mb-12 max-w-2xl mx-auto leading-relaxed">
+                                    Build wealth with institutional-grade tools, real-time insights, and a platform designed for serious investors.
+                                </p>
+                            </AnimateIn>
+                            <AnimateIn delay={0.45}>
+                                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                                    <Link href="/login" className="px-8 py-3.5 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-full font-semibold transition-all duration-300 transform hover:scale-105 animate-btnPulse">Get Started</Link>
+                                    <button onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })} className="w-12 h-12 border border-[#2a3d30] hover:border-[#4ade9a] rounded-full font-semibold transition-all duration-300 flex items-center justify-center group hover:bg-[#4ade9a]/10">
+                                        <span className="text-lg group-hover:translate-y-1 transition">&darr;</span>
+                                    </button>
+                                </div>
+                            </AnimateIn>
+                        </>
+                    )}
                 </div>
 
                 {/* Bottom left — Follow Us */}
-                <div className="absolute bottom-8 left-8 z-10 flex items-center gap-4" style={{ animation: 'symbolFadeIn 1s ease 1s forwards', opacity: 0 }}>
+                <div className={`absolute bottom-8 left-8 z-10 flex items-center gap-4 transition-all duration-1000 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
                     <span className="text-xs text-[#a8a8a0] uppercase tracking-widest">Follow Us</span>
                     <div className="flex items-center gap-3">
                         {['𝕏', 'in', 'f', '▶'].map((icon, i) => (
@@ -269,14 +406,14 @@ export default function Home() {
                 </div>
 
                 {/* Bottom center — Scroll to explore */}
-                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2" style={{ animation: 'symbolFadeIn 1s ease 1.2s forwards, gentleBounce 2s ease-in-out 2s infinite', opacity: 0 }}>
+                <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 transition-all duration-1000 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
                     <span className="text-xs text-[#a8a8a0] uppercase tracking-widest">Scroll to explore</span>
                     <span className="text-[#4ade9a] text-sm">&darr;</span>
                 </div>
             </section>
 
             {/* Scrolling Ticker Bar */}
-            <div className="relative border-t border-b border-[#2a3d30]/50 bg-[#0a1410]/90 backdrop-blur-sm overflow-hidden py-3">
+            <div className={`relative border-t border-b border-[#2a3d30]/50 bg-[#0a1410]/90 backdrop-blur-sm overflow-hidden py-3 transition-all duration-1000 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
                 <div className="flex animate-ticker whitespace-nowrap">
                     {[...tickerItems, ...tickerItems, ...tickerItems].map((item, i) => (
                         <div key={i} className="flex items-center gap-3 mx-6 flex-shrink-0">
