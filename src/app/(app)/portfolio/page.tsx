@@ -415,8 +415,19 @@ export default function PortfolioPage() {
                             </div>
                         ) : portfolioPulse ? (
                             <p className="text-base md:text-lg text-[#a8a8a0] leading-relaxed max-w-3xl whitespace-pre-line">
-                                <span className="text-[#4ade9a] font-medium">AI Insights:</span>{" "}
-                                <TypewriterText text={portfolioPulse.insight} speed={20} />
+                                {mergedPositions.length === 0 ? (
+                                    <>
+                                        You don&apos;t have any positions in your portfolio yet.{" "}
+                                        {portfolioPulse.insight && (
+                                            <TypewriterText text={portfolioPulse.insight} speed={20} />
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="text-[#4ade9a] font-medium">AI Insights:</span>{" "}
+                                        <TypewriterText text={portfolioPulse.insight} speed={20} />
+                                    </>
+                                )}
                             </p>
                         ) : (
                             <p className="text-[#a8a8a0]">Add GEMINI_API_KEY to .env.local to enable AI analysis.</p>
@@ -426,7 +437,7 @@ export default function PortfolioPage() {
             )}
 
             {/* Overvaluation, Growth, Political Climate - full-width section */}
-            {!loading && portfolioPulse && (
+            {!loading && portfolioPulse && mergedPositions.length > 0 && (
                 <section className="w-full -mx-4 sm:-mx-6 lg:-mx-8 px-2 sm:px-4 lg:px-6 py-6 border-y border-[#2a3d30]/50">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2 w-full">
                         <div className="group relative flex items-center justify-between gap-6 p-8 bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl transition-all duration-300 hover:border-[#4ade9a]/30 hover:shadow-[0_0_24px_rgba(74,222,154,0.08)] hover:-translate-y-0.5 cursor-pointer">
