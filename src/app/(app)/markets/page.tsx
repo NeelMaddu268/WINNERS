@@ -419,18 +419,18 @@ export default function MarketsPage() {
 
             {/* ── Sector Performance Heatmap ── */}
             <div className="px-4 mt-5">
-                <h2 className="text-sm font-bold tracking-widest text-[#a8a8a0] uppercase mb-3">Sector Performance</h2>
-                <div className="grid grid-cols-3 gap-2">
+                <h2 className="text-base font-bold tracking-widest text-[#a8a8a0] uppercase mb-3">Sector Performance</h2>
+                <div className="grid grid-cols-3 gap-3">
                     {(sectors.length === 0 ? Array(11).fill(null) : sectors).map((s, i) =>
                         s === null ? (
-                            <div key={i} className="rounded-3xl border border-[#2a3d30]/50 h-20 animate-pulse bg-[#111c18]" />
+                            <div key={i} className="rounded-3xl border border-[#2a3d30]/50 h-28 animate-pulse bg-[#111c18]" />
                         ) : (() => {
                             const { bg, text } = sectorColor(s.changesPercentage);
                             return (
                                 <button key={s.symbol} onClick={() => router.push(`/markets/${s.symbol}`)}
-                                    className={`flex flex-col items-center justify-center rounded-2xl border p-3 h-20 transition-transform hover:scale-105 ${bg}`}>
-                                    <span className="text-sm font-bold text-[#f0ede8] leading-tight text-center">{s.shortName}</span>
-                                    <span className={`text-base font-black mt-0.5 ${text}`}>
+                                    className={`flex flex-col items-center justify-center rounded-2xl border p-4 h-28 transition-transform hover:scale-105 ${bg}`}>
+                                    <span className="text-base font-bold text-[#f0ede8] leading-tight text-center">{s.shortName}</span>
+                                    <span className={`text-lg font-black mt-1 ${text}`}>
                                         {s.changesPercentage >= 0 ? "+" : ""}{s.changesPercentage.toFixed(2)}%
                                     </span>
                                 </button>
@@ -442,41 +442,41 @@ export default function MarketsPage() {
 
             {/* ── Events Calendar ── */}
             <div className="px-4 mt-5">
-                <h2 className="text-sm font-bold tracking-widest text-[#a8a8a0] uppercase mb-1">Live Events</h2>
-                <p className="text-sm text-[#a8a8a0] mb-3">{today}</p>
+                <h2 className="text-base font-bold tracking-widest text-[#a8a8a0] uppercase mb-1">Live Events</h2>
+                <p className="text-base text-[#a8a8a0] mb-3">{today}</p>
 
                 {/* Earnings */}
                 <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl overflow-hidden mb-3 shadow-lg">
                     <div className="flex border-b border-[#2a3d30]/50">
-                        <div className="flex-1 border-r border-[#2a3d30]/50 px-4 py-3">
-                            <span className="text-xs font-bold text-[#a8a8a0] uppercase tracking-wider">🌅 Before Open</span>
+                        <div className="flex-1 border-r border-[#2a3d30]/50 px-5 py-4">
+                            <span className="text-sm font-bold text-[#a8a8a0] uppercase tracking-wider">🌅 Before Open</span>
                         </div>
-                        <div className="flex-1 px-4 py-3">
-                            <span className="text-xs font-bold text-[#a8a8a0] uppercase tracking-wider">🌆 After Close</span>
+                        <div className="flex-1 px-5 py-4">
+                            <span className="text-sm font-bold text-[#a8a8a0] uppercase tracking-wider">🌆 After Close</span>
                         </div>
                     </div>
                     <div className="flex">
                         <div className="flex-1 border-r border-[#2a3d30]/50 py-2">
                             {earningsBefore.map(e => (
                                 <button key={e.symbol} onClick={() => router.push(`/markets/${e.symbol}`)}
-                                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#1a2a22] transition-colors">
+                                    className="w-full flex items-center justify-between px-5 py-4 hover:bg-[#1a2a22] transition-colors">
                                     <div className="flex flex-col items-start">
-                                        <span className="font-bold text-base text-[#f0ede8]">{e.symbol}</span>
-                                        <span className="text-xs text-[#a8a8a0]">{e.epsEstimate}</span>
+                                        <span className="font-bold text-lg text-[#f0ede8]">{e.symbol}</span>
+                                        <span className="text-sm text-[#a8a8a0]">{e.epsEstimate}</span>
                                     </div>
-                                    <span className="text-xs text-[#a8a8a0]">EPS est.</span>
+                                    <span className="text-sm text-[#a8a8a0]">EPS est.</span>
                                 </button>
                             ))}
                         </div>
                         <div className="flex-1 py-2">
                             {earningsAfter.map(e => (
                                 <button key={e.symbol} onClick={() => router.push(`/markets/${e.symbol}`)}
-                                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#1a2a22] transition-colors">
+                                    className="w-full flex items-center justify-between px-5 py-4 hover:bg-[#1a2a22] transition-colors">
                                     <div className="flex flex-col items-start">
-                                        <span className="font-bold text-base text-[#f0ede8]">{e.symbol}</span>
-                                        <span className="text-xs text-[#a8a8a0]">{e.epsEstimate}</span>
+                                        <span className="font-bold text-lg text-[#f0ede8]">{e.symbol}</span>
+                                        <span className="text-sm text-[#a8a8a0]">{e.epsEstimate}</span>
                                     </div>
-                                    <span className="text-xs text-[#a8a8a0]">EPS est.</span>
+                                    <span className="text-sm text-[#a8a8a0]">EPS est.</span>
                                 </button>
                             ))}
                         </div>
@@ -485,19 +485,19 @@ export default function MarketsPage() {
 
                 {/* Economic Releases */}
                 <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl overflow-hidden shadow-lg">
-                    <div className="px-4 py-3 border-b border-[#2a3d30]/50">
-                        <span className="text-xs font-bold text-[#a8a8a0] uppercase tracking-wider">📊 Economic Releases</span>
+                    <div className="px-5 py-4 border-b border-[#2a3d30]/50">
+                        <span className="text-sm font-bold text-[#a8a8a0] uppercase tracking-wider">📊 Economic Releases</span>
                     </div>
                     {economicEvents.map((ev, i) => (
-                        <div key={i} className="flex items-center px-4 py-3.5 border-b border-[#2a3d30]/50 last:border-0 gap-3">
-                            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${ev.impact === "high" ? "bg-red-500" : ev.impact === "medium" ? "bg-amber-400" : "bg-[#2a3d30]"}`} />
+                        <div key={i} className="flex items-center px-5 py-4 border-b border-[#2a3d30]/50 last:border-0 gap-4">
+                            <span className={`w-3 h-3 rounded-full shrink-0 ${ev.impact === "high" ? "bg-red-500" : ev.impact === "medium" ? "bg-amber-400" : "bg-[#2a3d30]"}`} />
                             <div className="flex flex-col flex-1 min-w-0">
-                                <span className="text-base font-semibold text-[#f0ede8]">{ev.event}</span>
-                                <span className="text-sm text-[#a8a8a0]">{ev.time}</span>
+                                <span className="text-lg font-semibold text-[#f0ede8]">{ev.event}</span>
+                                <span className="text-base text-[#a8a8a0]">{ev.time}</span>
                             </div>
                             <div className="flex flex-col items-end">
-                                <span className="text-sm text-[#a8a8a0] font-semibold">{ev.forecast}</span>
-                                <span className={`text-xs capitalize ${ev.impact === "high" ? "text-red-400" : ev.impact === "medium" ? "text-amber-400" : "text-[#a8a8a0]"}`}>{ev.impact}</span>
+                                <span className="text-base text-[#a8a8a0] font-semibold">{ev.forecast}</span>
+                                <span className={`text-sm capitalize ${ev.impact === "high" ? "text-red-400" : ev.impact === "medium" ? "text-amber-400" : "text-[#a8a8a0]"}`}>{ev.impact}</span>
                             </div>
                         </div>
                     ))}
