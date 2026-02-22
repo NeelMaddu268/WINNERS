@@ -393,6 +393,56 @@ const BREADTH_PROXY_SYMBOLS = [
     "ABBV", "CVX", "CRM", "BAC", "KO", "PEP", "LIN", "WMT", "TMO", "MCD"
 ];
 
+/** Portfolio 7-day % change. Positions: { ticker, shares }. currentPrices: { ticker: price }. */
+export async function getPortfolio7DayPctChange(
+    positions: { ticker: string; shares: number }[],
+    currentPrices: Record<string, number>
+): Promise<number | null> {
+    if (positions.length === 0) return null;
+    const now = new Date();
+    const weekAgo = new Date(now);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const dateStr = weekAgo.toISOString().split("T")[0];
+
+    let valueNow = 0;
+    let valueWeekAgo = 0;
+    for (const p of positions) {
+        const curr = currentPrices[p.ticker] ?? 0;
+        valueNow += p.shares * curr;
+        const hist = await getPriceForDate(p.ticker, dateStr);
+        valueWeekAgo += p.shares * (hist ?? curr);
+    }
+    if (valueWeekAgo <= 0) return null;
+    return ((valueNow - valueWeekAgo) / valueWeekAgo) * 100;
+}
+
+/** SPY 7-day % change (market proxy for weekly return). */
+export async function getSpy7DayPctChange(): Promise<number | null> {
+    try {
+        const cacheKey = "spy_7day";
+        if (cache[cacheKey] && cache[cacheKey].expires > Date.now()) {
+            return cache[cacheKey].data;
+        }
+        const res = await fetch(
+            `https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=10d`,
+            { headers: { "User-Agent": "Mozilla/5.0" }, next: { revalidate: 900 } }
+        );
+        if (!res.ok) return null;
+        const json = await res.json();
+        const quotes = json.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
+        const timestamps = json.chart?.result?.[0]?.timestamp;
+        if (!quotes || !timestamps || quotes.length < 2) return null;
+        const closes = quotes.filter((c: number | null) => c != null) as number[];
+        const first = closes[0];
+        const last = closes[closes.length - 1];
+        const pct = ((last - first) / first) * 100;
+        cache[cacheKey] = { data: pct, expires: Date.now() + CACHE_TTL_MS };
+        return pct;
+    } catch {
+        return null;
+    }
+}
+
 export async function getMarketBreadth(): Promise<{ up: number; down: number }> {
     try {
         const cacheKey = "market_breadth_proxy";

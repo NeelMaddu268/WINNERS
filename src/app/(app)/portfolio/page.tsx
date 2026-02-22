@@ -42,6 +42,8 @@ export default function PortfolioPage() {
     const [shareAudience, setShareAudience] = useState<"public" | "friends">("public");
     const [isSharingTx, setIsSharingTx] = useState(false);
     const [shareSuccess, setShareSuccess] = useState(false);
+    const [portfolio7DayPct, setPortfolio7DayPct] = useState<number | null>(null);
+    const [spy7DayPct, setSpy7DayPct] = useState<number | null>(null);
 
     const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
     const [pillPos, setPillPos] = useState<{ left: number; width: number } | null>(null);
@@ -307,6 +309,27 @@ export default function PortfolioPage() {
             }
         });
     }, [timeframe, mergedPositions, transactionsWithPrices, loading, portfolioRecalculating]);
+
+    useEffect(() => {
+        if (loading || mergedPositions.length === 0) {
+            setPortfolio7DayPct(null);
+            setSpy7DayPct(null);
+            return;
+        }
+        import("@/app/actions/market").then(({ getPortfolio7DayPctChange, getSpy7DayPctChange }) => {
+            const prices = { ...livePrices };
+            mergedPositions.forEach((p) => {
+                if (!(p.ticker in prices)) prices[p.ticker] = p.avgCost;
+            });
+            Promise.all([
+                getPortfolio7DayPctChange(mergedPositions.map((p) => ({ ticker: p.ticker, shares: p.shares })), prices),
+                getSpy7DayPctChange(),
+            ]).then(([p7, s7]) => {
+                setPortfolio7DayPct(p7 ?? null);
+                setSpy7DayPct(s7 ?? null);
+            });
+        });
+    }, [loading, mergedPositions, livePrices]);
 
     useEffect(() => {
         // Generate mock candlestick data for the mini chart
@@ -622,8 +645,8 @@ export default function PortfolioPage() {
                                 )}
                             </div>
 
-                            {/* Right column: Profitable Positions + Portfolio Return stacked */}
-                            <div className="lg:col-span-1 lg:row-span-2 flex flex-col gap-6">
+                            {/* Right column: Profitable Positions + Weekly Return stacked */}
+                            <div className="lg:col-span-1 flex flex-col gap-6">
                                 {/* Profitable Positions Gauge */}
                                 {(() => {
                                     const profitableCount = mergedPositions.filter(p => (livePrices[p.ticker] ?? p.avgCost) > p.avgCost).length;
@@ -652,23 +675,36 @@ export default function PortfolioPage() {
                                     );
                                 })()}
 
-                                {/* Performance Card - directly below Profitable Positions */}
+                                {/* Performance Card - Weekly Return vs Market */}
                                 <div className="bg-gradient-to-br from-[#4ade9a]/20 to-[#4ade9a]/5 border border-[#4ade9a]/30 rounded-3xl p-6 flex flex-col gap-4">
                                     <div>
-                                        <span className="text-4xl font-bold text-[#4ade9a] tracking-tighter block mb-1">+{totalReturn.toFixed(1)}%</span>
-                                        <span className="text-xs text-[#4ade9a] uppercase tracking-widest font-bold">Portfolio Return</span>
+                                        <span className={`text-4xl font-bold tracking-tighter block mb-1 ${(portfolio7DayPct ?? totalReturn) >= 0 ? "text-[#4ade9a]" : "text-red-400"}`}>
+                                            {portfolio7DayPct !== null
+                                                ? `${portfolio7DayPct >= 0 ? "+" : ""}${portfolio7DayPct.toFixed(1)}%`
+                                                : mergedPositions.length > 0
+                                                    ? "—"
+                                                    : `${totalReturn >= 0 ? "+" : ""}${totalReturn.toFixed(1)}%`}
+                                        </span>
+                                        <span className="text-xs text-[#4ade9a] uppercase tracking-widest font-bold">Weekly Return</span>
+                                        {spy7DayPct !== null && (
+                                            <span className="block text-xs text-[#a8a8a0] mt-1">Market (SPY): {spy7DayPct >= 0 ? "+" : ""}{spy7DayPct.toFixed(1)}%</span>
+                                        )}
                                     </div>
                                     <div>
                                         <h3 className="text-xl font-serif font-bold leading-tight text-white" style={{ fontFamily: 'Playfair Display, serif' }}>
-                                            {isPortfolioUp ? "Beating the Market!" : "Building Wealth"}
+                                            {portfolio7DayPct !== null && spy7DayPct !== null
+                                                ? portfolio7DayPct > spy7DayPct
+                                                    ? "Beating the Market!"
+                                                    : "Building Wealth"
+                                                : isPortfolioUp ? "Beating the Market!" : "Building Wealth"}
                                         </h3>
                                         <div className="w-10 h-1 bg-[#4ade9a] rounded-full mt-3" />
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Lookout Section */}
-                            <div className="lg:col-span-2 bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-8 shadow-xl">
+                            {/* Lookout Section - full width below */}
+                            <div className="lg:col-span-3 bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-8 shadow-xl">
                                 <h3 className="text-xl font-serif font-bold mb-6 flex items-center gap-3 text-[#f0ede8]" style={{ fontFamily: 'Playfair Display, serif' }}>
                                     Lookout👀 ({timeframe})
                                 </h3>
