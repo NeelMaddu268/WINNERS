@@ -107,13 +107,13 @@ export function ExpandableTabs({
                         onClick={() => handleSelect(index)}
                         transition={transition}
                         className={cn(
-                            "relative flex items-center rounded-full py-2 text-sm font-medium transition-colors duration-300",
+                            "relative flex items-center rounded-full py-2 text-base font-medium transition-colors duration-300 cursor-pointer",
                             selected === index
                                 ? cn("bg-[#4ade9a]/15 border border-[#4ade9a]/30", activeColor)
                                 : "text-[#a8a8a0] hover:text-[#f0ede8] hover:bg-[#1a2a22]/50"
                         )}
                     >
-                        <Icon size={18} />
+                        <Icon size={20} />
                         <AnimatePresence initial={false}>
                             {selected === index && (
                                 <motion.span

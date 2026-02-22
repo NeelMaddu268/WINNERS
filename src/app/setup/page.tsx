@@ -44,15 +44,20 @@ const BANKS = [
 function ProgressBar({ step }: { step: number }) {
     return (
         <div className="mb-8">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-3">
                 {STEPS.map((s, i) => {
                     const isCompleted = i < step;
                     const isActive = i === step;
                     return (
-                        <div key={s.label} className="flex flex-col items-center gap-1 flex-1">
+                        <div key={s.label} className="flex flex-col items-center gap-1.5 flex-1">
                             <div
-                                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300
-                                    ${isCompleted ? "bg-blue-600 text-white" : isActive ? "bg-blue-600 text-white ring-4 ring-blue-200 dark:ring-blue-900" : "bg-zinc-200 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400"}`}
+                                className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300
+                                    ${isCompleted
+                                        ? "bg-[#4ade9a] text-[#0d1a14]"
+                                        : isActive
+                                            ? "bg-[#4ade9a]/20 text-[#4ade9a] ring-2 ring-[#4ade9a]/50"
+                                            : "bg-[#1a2a22] text-[#a8a8a0] border border-[#2a3d30]"
+                                    }`}
                             >
                                 {isCompleted ? (
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -60,16 +65,16 @@ function ProgressBar({ step }: { step: number }) {
                                     </svg>
                                 ) : i + 1}
                             </div>
-                            <span className={`text-[11px] font-medium transition-colors ${isActive || isCompleted ? "text-blue-600 dark:text-blue-400" : "text-zinc-400 dark:text-zinc-500"}`}>
+                            <span className={`text-[11px] font-medium transition-colors ${isActive || isCompleted ? "text-[#4ade9a]" : "text-[#a8a8a0]"}`}>
                                 {s.label}
                             </span>
                         </div>
                     );
                 })}
             </div>
-            <div className="relative h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+            <div className="relative h-1 bg-[#1a2a22] rounded-full overflow-hidden">
                 <div
-                    className="absolute inset-y-0 left-0 bg-blue-600 rounded-full transition-all duration-500 ease-in-out"
+                    className="absolute inset-y-0 left-0 bg-[#4ade9a] rounded-full transition-all duration-500 ease-in-out"
                     style={{ width: `${(step / (STEPS.length - 1)) * 100}%` }}
                 />
             </div>
@@ -224,7 +229,6 @@ export default function SetupPage() {
 
             const now = new Date();
 
-            // 2. Save User Data to Firestore (paper trading: $10k cash, empty portfolio)
             await setDoc(doc(db, "users", currentUser.uid), {
                 uid: currentUser.uid,
                 firstName: formData.firstName.trim(),
@@ -256,28 +260,41 @@ export default function SetupPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-black text-black dark:text-white">
-                Loading...
+            <div className="min-h-screen flex items-center justify-center bg-[#0d1a14]">
+                <div className="w-8 h-8 border-2 border-[#4ade9a]/30 border-t-[#4ade9a] rounded-full animate-spin" />
             </div>
         );
     }
 
-    // ─── Render ───────────────────────────────────────────────────────────────
+    // ─── Styles ───────────────────────────────────────────────────────────────
 
-    const inputCls = "w-full px-3 py-2.5 border border-gray-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 rounded-lg text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors";
-    const labelCls = "block text-sm font-medium mb-1.5 text-zinc-700 dark:text-zinc-300";
+    const inputCls = "w-full px-4 py-3 border border-[#2a3d30] bg-[#1a2a22] text-[#f0ede8] rounded-xl focus:outline-none focus:border-[#4ade9a]/60 focus:ring-1 focus:ring-[#4ade9a]/30 transition-colors placeholder-[#a8a8a0]";
+    const selectCls = `${inputCls} cursor-pointer`;
+    const labelCls = "block text-sm font-semibold mb-2 text-[#a8a8a0] uppercase tracking-wider";
 
     return (
-        <div className="min-h-screen p-4 flex items-center justify-center bg-zinc-50 font-sans dark:bg-black py-12">
-            <main className="w-full max-w-md bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl p-8 shadow-lg">
+        <div className="min-h-screen flex items-center justify-center bg-[#0d1a14] font-sans py-12 px-4">
+            {/* Subtle background glow */}
+            <div className="fixed inset-0 pointer-events-none">
+                <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#4ade9a]/5 rounded-full blur-3xl" />
+            </div>
+
+            <main className="relative w-full max-w-md bg-[#111c18] border border-[#2a3d30]/60 rounded-2xl p-8 shadow-2xl">
+                {/* Logo */}
+                <div className="flex items-center gap-2 mb-8">
+                    <div className="w-7 h-7 bg-[#4ade9a] rounded-md flex items-center justify-center shrink-0">
+                        <span className="text-[#0d1a14] font-bold text-sm">C</span>
+                    </div>
+                    <span className="font-semibold text-sm tracking-tight text-[#f0ede8]">CashMere</span>
+                </div>
 
                 <ProgressBar step={step} />
 
                 {/* ── Step 1: Profile ── */}
                 {step === 0 && (
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 mb-1">Create your profile</h1>
-                        <p className="text-zinc-500 dark:text-zinc-400 text-sm mb-6">Pick a name and a unique username.</p>
+                        <h1 className="text-2xl font-bold tracking-tight text-[#f0ede8] mb-1" style={{ fontFamily: 'Playfair Display, serif' }}>Create your profile</h1>
+                        <p className="text-[#a8a8a0] text-sm mb-6">Pick a name and a unique username.</p>
 
                         <div className="flex flex-col gap-5">
                             <div className="flex gap-4">
@@ -296,19 +313,19 @@ export default function SetupPage() {
                             <div>
                                 <label htmlFor="username" className={labelCls}>Username</label>
                                 <div className="relative">
-                                    <span className="absolute left-3 top-2.5 text-zinc-500 font-medium">@</span>
+                                    <span className="absolute left-4 top-3 text-[#a8a8a0] font-medium">@</span>
                                     <input
                                         type="text" id="username" name="username" value={formData.username}
                                         onChange={handleChange} placeholder="cool_investor" minLength={3}
-                                        className={`${inputCls} pl-8 ${usernameStatus === "taken" ? "border-red-500 focus:ring-red-500" :
-                                            usernameStatus === "available" ? "border-green-500 focus:ring-green-500" : ""
+                                        className={`${inputCls} pl-8 ${usernameStatus === "taken" ? "border-red-500/60 focus:border-red-500 focus:ring-red-500/30" :
+                                            usernameStatus === "available" ? "border-[#4ade9a]/60" : ""
                                             }`}
                                     />
                                 </div>
-                                {usernameStatus === "checking" && <p className="text-xs text-blue-500 mt-1">Checking availability...</p>}
-                                {usernameStatus === "taken" && <p className="text-xs text-red-500 mt-1">Username already taken.</p>}
-                                {usernameStatus === "available" && <p className="text-xs text-green-500 mt-1">Username available!</p>}
-                                {usernameStatus === "idle" && <p className="text-xs text-zinc-400 mt-1">Letters, numbers, and underscores only.</p>}
+                                {usernameStatus === "checking" && <p className="text-xs text-[#4ade9a]/70 mt-1.5">Checking availability...</p>}
+                                {usernameStatus === "taken" && <p className="text-xs text-red-400 mt-1.5">Username already taken.</p>}
+                                {usernameStatus === "available" && <p className="text-xs text-[#4ade9a] mt-1.5">Username available!</p>}
+                                {usernameStatus === "idle" && <p className="text-xs text-[#a8a8a0] mt-1.5">Letters, numbers, and underscores only.</p>}
                             </div>
                         </div>
                     </div>
@@ -317,8 +334,8 @@ export default function SetupPage() {
                 {/* ── Step 2: Birthday ── */}
                 {step === 1 && (
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 mb-1">When&apos;s your birthday?</h1>
-                        <p className="text-zinc-500 dark:text-zinc-400 text-sm mb-6">You must be 18 or older to use this platform.</p>
+                        <h1 className="text-2xl font-bold tracking-tight text-[#f0ede8] mb-1" style={{ fontFamily: 'Playfair Display, serif' }}>When&apos;s your birthday?</h1>
+                        <p className="text-[#a8a8a0] text-sm mb-6">You must be 18 or older to use this platform.</p>
 
                         <div>
                             <label htmlFor="dob" className={labelCls}>Date of Birth</label>
@@ -334,14 +351,14 @@ export default function SetupPage() {
                 {/* ── Step 3: Investment Experience ── */}
                 {step === 2 && (
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 mb-1">Tell us about yourself</h1>
-                        <p className="text-zinc-500 dark:text-zinc-400 text-sm mb-6">Help us personalize your investing experience.</p>
+                        <h1 className="text-2xl font-bold tracking-tight text-[#f0ede8] mb-1" style={{ fontFamily: 'Playfair Display, serif' }}>Tell us about yourself</h1>
+                        <p className="text-[#a8a8a0] text-sm mb-6">Help us personalize your investing experience.</p>
 
                         <div className="flex flex-col gap-5">
                             <div>
                                 <label htmlFor="investmentExperience" className={labelCls}>Investment Experience</label>
                                 <select id="investmentExperience" name="investmentExperience" value={formData.investmentExperience}
-                                    onChange={handleChange} className={inputCls} required>
+                                    onChange={handleChange} className={selectCls} required>
                                     <option value="" disabled>Select your experience level</option>
                                     <option value="none">No experience — I&apos;m just starting out</option>
                                     <option value="beginner">Beginner — I&apos;ve bought a stock or two</option>
@@ -354,7 +371,7 @@ export default function SetupPage() {
                             <div>
                                 <label htmlFor="riskTolerance" className={labelCls}>Risk Tolerance</label>
                                 <select id="riskTolerance" name="riskTolerance" value={formData.riskTolerance}
-                                    onChange={handleChange} className={inputCls} required>
+                                    onChange={handleChange} className={selectCls} required>
                                     <option value="" disabled>How much risk are you comfortable with?</option>
                                     <option value="conservative">Conservative — I prefer stable, low-risk investments</option>
                                     <option value="moderate">Moderate — I can handle some ups and downs</option>
@@ -365,7 +382,7 @@ export default function SetupPage() {
                             <div>
                                 <label htmlFor="investmentGoal" className={labelCls}>Primary Investment Goal</label>
                                 <select id="investmentGoal" name="investmentGoal" value={formData.investmentGoal}
-                                    onChange={handleChange} className={inputCls} required>
+                                    onChange={handleChange} className={selectCls} required>
                                     <option value="" disabled>What are you investing for?</option>
                                     <option value="wealth_growth">Long-term wealth growth</option>
                                     <option value="retirement">Retirement savings</option>
@@ -381,12 +398,12 @@ export default function SetupPage() {
                 {/* ── Step 4: Bank Linking ── */}
                 {step === 3 && (
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 mb-1">Link a bank account</h1>
-                        <p className="text-zinc-500 dark:text-zinc-400 text-sm mb-6">
+                        <h1 className="text-2xl font-bold tracking-tight text-[#f0ede8] mb-1" style={{ fontFamily: 'Playfair Display, serif' }}>Link a bank account</h1>
+                        <p className="text-[#a8a8a0] text-sm mb-6">
                             Connect your bank to fund your paper trading account. You can skip this for now.
                         </p>
 
-                        <div className="flex flex-col gap-3">
+                        <div className="flex flex-col gap-2.5">
                             {BANKS.map((bank) => {
                                 const isLinked = formData.linkedBank === bank.id;
                                 return (
@@ -394,32 +411,32 @@ export default function SetupPage() {
                                         key={bank.id}
                                         type="button"
                                         onClick={() => setFormData((prev) => ({ ...prev, linkedBank: isLinked ? null : bank.id }))}
-                                        className={`flex items-center justify-between w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 text-left
+                                        className={`flex items-center justify-between w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 text-left cursor-pointer
                                             ${isLinked
-                                                ? "border-blue-500 bg-blue-50 dark:bg-blue-950/40"
-                                                : "border-gray-200 dark:border-zinc-700 hover:border-blue-300 dark:hover:border-zinc-500 bg-white dark:bg-zinc-800"
+                                                ? "border-[#4ade9a]/60 bg-[#4ade9a]/10"
+                                                : "border-[#2a3d30] bg-[#1a2a22] hover:border-[#2a3d30]/80 hover:bg-[#1f2f25]"
                                             }`}
                                     >
                                         <div className="flex items-center gap-3">
                                             <span className="text-2xl">{bank.emoji}</span>
-                                            <span className="font-medium text-zinc-900 dark:text-zinc-100">{bank.name}</span>
+                                            <span className="font-medium text-[#f0ede8]">{bank.name}</span>
                                         </div>
                                         {isLinked ? (
-                                            <span className="flex items-center gap-1.5 text-sm font-semibold text-blue-600 dark:text-blue-400">
+                                            <span className="flex items-center gap-1.5 text-sm font-semibold text-[#4ade9a]">
                                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                                 </svg>
                                                 Connected
                                             </span>
                                         ) : (
-                                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">Connect</span>
+                                            <span className="text-sm font-medium text-[#4ade9a]/70">Connect</span>
                                         )}
                                     </button>
                                 );
                             })}
                         </div>
 
-                        <p className="text-xs text-zinc-400 mt-4 text-center">
+                        <p className="text-xs text-[#a8a8a0] mt-4 text-center">
                             🔒 Demo only — no real banking credentials are collected.
                         </p>
                     </div>
@@ -427,7 +444,7 @@ export default function SetupPage() {
 
                 {/* ── Error messages ── */}
                 {(stepError || setupError) && (
-                    <div className="mt-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-lg text-sm">
+                    <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl text-sm">
                         {stepError || setupError}
                     </div>
                 )}
@@ -438,7 +455,7 @@ export default function SetupPage() {
                         <button
                             type="button"
                             onClick={handleBack}
-                            className="px-5 py-2.5 rounded-lg border border-gray-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-medium transition-colors"
+                            className="px-5 py-2.5 rounded-xl border border-[#2a3d30] text-[#a8a8a0] hover:bg-[#1a2a22] hover:text-[#f0ede8] font-medium transition-colors cursor-pointer"
                         >
                             Back
                         </button>
@@ -448,7 +465,7 @@ export default function SetupPage() {
                         <button
                             type="button"
                             onClick={handleNext}
-                            className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                            className="px-6 py-2.5 bg-[#4ade9a] text-[#0d1a14] font-semibold rounded-xl hover:bg-[#22c55e] focus:outline-none transition-colors cursor-pointer"
                         >
                             Next
                         </button>
@@ -457,13 +474,12 @@ export default function SetupPage() {
                             type="button"
                             onClick={handleSubmit}
                             disabled={submitting}
-                            className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
+                            className="px-6 py-2.5 bg-[#4ade9a] text-[#0d1a14] font-semibold rounded-xl hover:bg-[#22c55e] focus:outline-none disabled:opacity-50 transition-colors cursor-pointer"
                         >
                             {submitting ? "Creating Account..." : "Create Account"}
                         </button>
                     )}
                 </div>
-
             </main>
         </div>
     );
