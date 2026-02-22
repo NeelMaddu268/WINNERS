@@ -338,31 +338,9 @@ export default function PortfolioPage() {
                                             <span className="ml-3">Analyzing portfolio...</span>
                                         </div>
                                     ) : portfolioPulse ? (
-                                        <>
-                                            <p className="text-base md:text-lg text-[#a8a8a0] leading-relaxed max-w-3xl mb-8 whitespace-pre-line">
-                                                <span className="text-[#4ade9a] font-medium">AI Insights:</span> {portfolioPulse.insight}
-                                            </p>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div className="flex items-center justify-between p-4 bg-[#0a120f] border border-[#2a3d30]/40 rounded-2xl">
-                                                    <span className="text-sm font-medium text-[#a8a8a0]">Overvaluation Risk</span>
-                                                    <span className={`font-bold px-3 py-1 rounded-full text-sm border ${portfolioPulse.overvaluation >= 60 ? "bg-red-500/10 text-red-400 border-red-500/20" : portfolioPulse.overvaluation >= 40 ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" : "bg-[#4ade9a]/10 text-[#4ade9a] border-[#4ade9a]/20"}`}>
-                                                        {portfolioPulse.overvaluation}/100
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center justify-between p-4 bg-[#0a120f] border border-[#2a3d30]/40 rounded-2xl">
-                                                    <span className="text-sm font-medium text-[#a8a8a0]">Growth Potential</span>
-                                                    <span className={`font-bold px-3 py-1 rounded-full text-sm border ${portfolioPulse.growthPotential >= 70 ? "bg-[#4ade9a]/10 text-[#4ade9a] border-[#4ade9a]/20" : portfolioPulse.growthPotential >= 40 ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"}`}>
-                                                        {portfolioPulse.growthPotential}/100
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center justify-between p-4 bg-[#0a120f] border border-[#2a3d30]/40 rounded-2xl">
-                                                    <span className="text-sm font-medium text-[#a8a8a0]">Political Climate</span>
-                                                    <span className={`font-bold px-3 py-1 rounded-full text-sm border ${portfolioPulse.politicalClimate >= 60 ? "bg-[#4ade9a]/10 text-[#4ade9a] border-[#4ade9a]/20" : portfolioPulse.politicalClimate >= 40 ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"}`}>
-                                                        {portfolioPulse.politicalClimate}/100
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </>
+                                        <p className="text-base md:text-lg text-[#a8a8a0] leading-relaxed max-w-3xl whitespace-pre-line">
+                                            <span className="text-[#4ade9a] font-medium">AI Insights:</span> {portfolioPulse.insight}
+                                        </p>
                                     ) : (
                                         <p className="text-[#a8a8a0]">Add GEMINI_API_KEY to .env.local to enable AI analysis.</p>
                                     )}
@@ -376,6 +354,32 @@ export default function PortfolioPage() {
                                 <div className="text-xs text-[#a8a8a0]">{(100 - investedPct).toFixed(0)}% of portfolio</div>
                             </div>
                         </div>
+                    )}
+
+                    {/* Overvaluation, Growth, Political Climate - full-width section */}
+                    {!loading && portfolioPulse && (
+                        <section className="w-full -mx-4 sm:-mx-6 lg:-mx-8 px-2 sm:px-4 lg:px-6 py-6 border-y border-[#2a3d30]/50">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 w-full">
+                                <div className="flex items-center justify-between gap-6 p-8 bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl">
+                                    <span className="text-base font-medium text-[#a8a8a0]">Valuation Risk</span>
+                                    <span className={`font-bold px-4 py-2 rounded-full text-sm border shrink-0 inline-flex items-center justify-center ${portfolioPulse.overvaluation >= 60 ? "bg-red-500/10 text-red-400 border-red-500/20" : portfolioPulse.overvaluation >= 40 ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" : "bg-[#4ade9a]/10 text-[#4ade9a] border-[#4ade9a]/20"}`}>
+                                        {portfolioPulse.overvaluation}/100
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between gap-6 p-8 bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl">
+                                    <span className="text-base font-medium text-[#a8a8a0]">Growth Potential</span>
+                                    <span className={`font-bold px-4 py-2 rounded-full text-sm border shrink-0 inline-flex items-center justify-center ${portfolioPulse.growthPotential >= 70 ? "bg-[#4ade9a]/10 text-[#4ade9a] border-[#4ade9a]/20" : portfolioPulse.growthPotential >= 40 ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"}`}>
+                                        {portfolioPulse.growthPotential}/100
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between gap-6 p-8 bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl">
+                                    <span className="text-base font-medium text-[#a8a8a0]">Political Climate</span>
+                                    <span className={`font-bold px-4 py-2 rounded-full text-sm border shrink-0 inline-flex items-center justify-center ${portfolioPulse.politicalClimate >= 60 ? "bg-[#4ade9a]/10 text-[#4ade9a] border-[#4ade9a]/20" : portfolioPulse.politicalClimate >= 40 ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"}`}>
+                                        {portfolioPulse.politicalClimate}/100
+                                    </span>
+                                </div>
+                            </div>
+                        </section>
                     )}
 
                     {/* Portfolio Section */}

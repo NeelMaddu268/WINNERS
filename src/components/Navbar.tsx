@@ -21,7 +21,7 @@ export default function Navbar() {
     const activeIndex = links.findIndex(l => l.href === pathname);
 
     return (
-        <nav className="fixed top-0 w-full z-50 flex items-center justify-center pt-4 pb-4 bg-black pointer-events-none">
+        <nav className="fixed top-0 w-full z-50 flex items-center justify-center pt-4 pb-4 bg-[#0d1a14] pointer-events-none">
             <div className="pointer-events-auto flex items-center gap-0">
                 {/* Logo pill */}
                 <Link
