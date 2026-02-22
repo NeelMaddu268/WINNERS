@@ -244,11 +244,45 @@ export default function PortfolioPage() {
             return;
         }
         const holdings = mergedPositions.map((p) => ({ ticker: p.ticker, name: p.name, shares: p.shares, costBasis: p.costBasis }));
-        setAiLoading({ pulse: true, insights: true, lookout: true });
-        getPortfolioPulse(timeframe, holdings).then((r) => {
-            setPortfolioPulse(r ?? null);
-            setAiLoading((prev) => ({ ...prev, pulse: false }));
-        });
+        const holdingsKey = holdings.map((h) => `${h.ticker}:${h.shares}`).sort().join(",");
+        const txCount = transactionHistory.length;
+        const uid = auth.currentUser?.uid ?? "anon";
+        const cacheKey = `portfolioPulse:${uid}:${timeframe}:${holdingsKey}`;
+        const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+        const tryCache = () => {
+            if (typeof window === "undefined") return null;
+            try {
+                const raw = localStorage.getItem(cacheKey);
+                if (!raw) return null;
+                const { data, timestamp, storedTxCount } = JSON.parse(raw);
+                if (Date.now() - timestamp > CACHE_TTL_MS) return null;
+                if (storedTxCount !== txCount) return null;
+                return data as PortfolioPulseResult;
+            } catch {
+                return null;
+            }
+        };
+
+        const cached = tryCache();
+        setAiLoading({ pulse: !cached, insights: true, lookout: true });
+        if (cached) {
+            setPortfolioPulse(cached);
+        } else {
+            getPortfolioPulse(timeframe, holdings).then((r) => {
+                if (r && typeof window !== "undefined") {
+                    try {
+                        localStorage.setItem(cacheKey, JSON.stringify({
+                            data: r,
+                            timestamp: Date.now(),
+                            storedTxCount: txCount,
+                        }));
+                    } catch { /* ignore */ }
+                }
+                setPortfolioPulse(r ?? null);
+                setAiLoading((prev) => ({ ...prev, pulse: false }));
+            });
+        }
         getAccountInsights(
             timeframe,
             mergedPositions.map((p) => ({ ticker: p.ticker, name: p.name, shares: p.shares })),
@@ -318,40 +352,31 @@ export default function PortfolioPage() {
 
                     {/* AI Account Summary Section */}
                     {!loading && (
-                        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                            <div className="lg:col-span-3">
-                                <div className="bg-gradient-to-br from-[#1a2a22] to-[#111c18] border border-[#2a3d30]/50 rounded-2xl p-6 lg:p-8 shadow-xl relative overflow-hidden group h-full">
-                                    {/* Decorative AI Sparkles */}
-                                    <div className="absolute top-4 right-4 opacity-20 group-hover:opacity-40 transition-opacity duration-1000">
-                                        <svg className="w-8 h-8 text-[#4ade9a]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                        </svg>
+                        <div className="w-full">
+                            <div className="bg-gradient-to-br from-[#1a2a22] to-[#111c18] border border-[#2a3d30]/50 rounded-2xl p-6 lg:p-8 shadow-xl relative overflow-hidden group w-full">
+                                {/* Decorative AI Sparkles */}
+                                <div className="absolute top-4 right-4 opacity-20 group-hover:opacity-40 transition-opacity duration-1000">
+                                    <svg className="w-8 h-8 text-[#4ade9a]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                </div>
+
+                                <h2 className="text-xl lg:text-2xl font-serif font-bold text-[#f0ede8] mb-3" style={{ fontFamily: 'Playfair Display, serif' }}>
+                                    Portfolio Pulse
+                                </h2>
+
+                                {aiLoading.pulse ? (
+                                    <div className="py-8 flex items-center justify-center text-[#a8a8a0]">
+                                        <div className="w-8 h-8 border-2 border-[#4ade9a]/30 border-t-[#4ade9a] rounded-full animate-spin" />
+                                        <span className="ml-3">Analyzing portfolio...</span>
                                     </div>
-
-                                    <h2 className="text-xl lg:text-2xl font-serif font-bold text-[#f0ede8] mb-3" style={{ fontFamily: 'Playfair Display, serif' }}>
-                                        Portfolio Pulse
-                                    </h2>
-
-                                    {aiLoading.pulse ? (
-                                        <div className="py-8 flex items-center justify-center text-[#a8a8a0]">
-                                            <div className="w-8 h-8 border-2 border-[#4ade9a]/30 border-t-[#4ade9a] rounded-full animate-spin" />
-                                            <span className="ml-3">Analyzing portfolio...</span>
-                                        </div>
-                                    ) : portfolioPulse ? (
-                                        <p className="text-base md:text-lg text-[#a8a8a0] leading-relaxed max-w-3xl whitespace-pre-line">
-                                            <span className="text-[#4ade9a] font-medium">AI Insights:</span> {portfolioPulse.insight}
-                                        </p>
-                                    ) : (
-                                        <p className="text-[#a8a8a0]">Add GEMINI_API_KEY to .env.local to enable AI analysis.</p>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="bg-[#1a2a22] rounded-xl p-4 border border-[#4ade9a]/20">
-                                <div className="text-[#a8a8a0] text-xs uppercase tracking-wider font-bold mb-2">Available Cash</div>
-                                <div className="text-2xl font-bold text-[#4ade9a] mb-1">
-                                    ${cashBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </div>
-                                <div className="text-xs text-[#a8a8a0]">{(100 - investedPct).toFixed(0)}% of portfolio</div>
+                                ) : portfolioPulse ? (
+                                    <p className="text-base md:text-lg text-[#a8a8a0] leading-relaxed max-w-3xl whitespace-pre-line">
+                                        <span className="text-[#4ade9a] font-medium">AI Insights:</span> {portfolioPulse.insight}
+                                    </p>
+                                ) : (
+                                    <p className="text-[#a8a8a0]">Add GEMINI_API_KEY to .env.local to enable AI analysis.</p>
+                                )}
                             </div>
                         </div>
                     )}
@@ -360,23 +385,53 @@ export default function PortfolioPage() {
                     {!loading && portfolioPulse && (
                         <section className="w-full -mx-4 sm:-mx-6 lg:-mx-8 px-2 sm:px-4 lg:px-6 py-6 border-y border-[#2a3d30]/50">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-2 w-full">
-                                <div className="flex items-center justify-between gap-6 p-8 bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl">
+                                <div className="group relative flex items-center justify-between gap-6 p-8 bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl transition-all duration-300 hover:border-[#4ade9a]/30 hover:shadow-[0_0_24px_rgba(74,222,154,0.08)] hover:-translate-y-0.5 cursor-default">
                                     <span className="text-base font-medium text-[#a8a8a0]">Valuation Risk</span>
                                     <span className={`font-bold px-4 py-2 rounded-full text-sm border shrink-0 inline-flex items-center justify-center ${portfolioPulse.overvaluation >= 60 ? "bg-red-500/10 text-red-400 border-red-500/20" : portfolioPulse.overvaluation >= 40 ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" : "bg-[#4ade9a]/10 text-[#4ade9a] border-[#4ade9a]/20"}`}>
                                         {portfolioPulse.overvaluation}/100
                                     </span>
+                                    {(portfolioPulse.valuationRiskExplanation?.length ?? 0) > 0 && (
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-72 p-4 bg-[#1a2a22] border border-[#2a3d30] rounded-xl shadow-xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                            <ul className="space-y-2 text-sm text-[#a8a8a0] list-disc list-inside">
+                                                {portfolioPulse.valuationRiskExplanation!.map((b, i) => (
+                                                    <li key={i}>{b}</li>
+                                                ))}
+                                            </ul>
+                                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-8 border-transparent border-t-[#1a2a22]" />
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="flex items-center justify-between gap-6 p-8 bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl">
+                                <div className="group relative flex items-center justify-between gap-6 p-8 bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl transition-all duration-300 hover:border-[#4ade9a]/30 hover:shadow-[0_0_24px_rgba(74,222,154,0.08)] hover:-translate-y-0.5 cursor-default">
                                     <span className="text-base font-medium text-[#a8a8a0]">Growth Potential</span>
                                     <span className={`font-bold px-4 py-2 rounded-full text-sm border shrink-0 inline-flex items-center justify-center ${portfolioPulse.growthPotential >= 70 ? "bg-[#4ade9a]/10 text-[#4ade9a] border-[#4ade9a]/20" : portfolioPulse.growthPotential >= 40 ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"}`}>
                                         {portfolioPulse.growthPotential}/100
                                     </span>
+                                    {(portfolioPulse.growthPotentialExplanation?.length ?? 0) > 0 && (
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-72 p-4 bg-[#1a2a22] border border-[#2a3d30] rounded-xl shadow-xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                            <ul className="space-y-2 text-sm text-[#a8a8a0] list-disc list-inside">
+                                                {portfolioPulse.growthPotentialExplanation!.map((b, i) => (
+                                                    <li key={i}>{b}</li>
+                                                ))}
+                                            </ul>
+                                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-8 border-transparent border-t-[#1a2a22]" />
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="flex items-center justify-between gap-6 p-8 bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl">
+                                <div className="group relative flex items-center justify-between gap-6 p-8 bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl transition-all duration-300 hover:border-[#4ade9a]/30 hover:shadow-[0_0_24px_rgba(74,222,154,0.08)] hover:-translate-y-0.5 cursor-default">
                                     <span className="text-base font-medium text-[#a8a8a0]">Political Climate</span>
                                     <span className={`font-bold px-4 py-2 rounded-full text-sm border shrink-0 inline-flex items-center justify-center ${portfolioPulse.politicalClimate >= 60 ? "bg-[#4ade9a]/10 text-[#4ade9a] border-[#4ade9a]/20" : portfolioPulse.politicalClimate >= 40 ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"}`}>
                                         {portfolioPulse.politicalClimate}/100
                                     </span>
+                                    {(portfolioPulse.politicalClimateExplanation?.length ?? 0) > 0 && (
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-72 p-4 bg-[#1a2a22] border border-[#2a3d30] rounded-xl shadow-xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                            <ul className="space-y-2 text-sm text-[#a8a8a0] list-disc list-inside">
+                                                {portfolioPulse.politicalClimateExplanation!.map((b, i) => (
+                                                    <li key={i}>{b}</li>
+                                                ))}
+                                            </ul>
+                                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-8 border-transparent border-t-[#1a2a22]" />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </section>
@@ -530,80 +585,87 @@ export default function PortfolioPage() {
             <div className="mt-8 border-t border-white/5 pt-12">
                 <h2 className="text-2xl font-serif font-bold mb-8 text-[#f0ede8]" style={{ fontFamily: 'Playfair Display, serif' }}>Account Insights</h2>
 
-                        <BentoGrid className="lg:grid-rows-2 grid-cols-1 lg:grid-cols-3 gap-6">
+                        <BentoGrid className="auto-rows-min lg:grid-rows-[auto_auto] grid-cols-1 lg:grid-cols-3 gap-6">
                             {/* Account Insights */}
-                            <div className="lg:col-span-2 bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+                            <div className="lg:col-span-2 bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
                                 <div className="absolute top-0 right-0 w-64 h-64 bg-[#4ade9a]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
-                                <h3 className="text-xl text-[#a8a8a0] font-medium mb-6">Account Insights</h3>
+                                <h3 className="text-lg text-[#a8a8a0] font-medium mb-4">Account Insights</h3>
                                 {aiLoading.insights ? (
-                                    <div className="py-6 flex items-center text-[#a8a8a0]">
+                                    <div className="py-4 flex items-center text-[#a8a8a0]">
                                         <div className="w-6 h-6 border-2 border-[#4ade9a]/30 border-t-[#4ade9a] rounded-full animate-spin" />
                                         <span className="ml-3 text-sm">Analyzing positions...</span>
                                     </div>
                                 ) : accountInsights ? (
-                                    <div className="space-y-6 text-lg leading-relaxed relative z-10">
+                                    <div className="space-y-4 text-base leading-relaxed relative z-10">
                                         {accountInsights.items.length > 0 ? (
                                             accountInsights.items.map((item, i) => (
-                                                <div key={i} className="flex gap-4 items-start">
-                                                    <span className="text-[#4ade9a] text-2xl leading-none mt-1">&mdash;</span>
+                                                <div key={i} className="flex gap-3 items-start">
+                                                    <span className="text-[#4ade9a] text-lg leading-none mt-0.5">&mdash;</span>
                                                     <div>
                                                         <p><span className="text-white font-bold">{item.ticker}</span> ({item.name}): {item.movement}</p>
-                                                        <ul className="text-[#a8a8a0] text-base mt-1 list-disc list-inside space-y-0.5">
+                                                        <ul className="text-[#a8a8a0] text-sm mt-0.5 list-disc list-inside space-y-0.5">
                                                             {(Array.isArray(item.drivers) ? item.drivers : [item.drivers]).map((d, j) => (
                                                                 <li key={j}>{d}</li>
                                                             ))}
                                                         </ul>
-                                                        <p className="text-[#a8a8a0] text-base mt-1">{item.interpretation}</p>
+                                                        <p className="text-[#a8a8a0] text-sm mt-0.5">{item.interpretation}</p>
                                                     </div>
                                                 </div>
                                             ))
                                         ) : (
-                                            <p className="text-[#a8a8a0]">No significant position movements in this timeframe.</p>
+                                            <p className="text-[#a8a8a0] text-sm">No significant position movements in this timeframe.</p>
                                         )}
-                                        <p className="text-white font-medium mt-4">{accountInsights.portfolioObservation}</p>
-                                        {accountInsights.watchItems?.length > 0 && (
-                                            <div className="mt-4">
-                                                <span className="text-[#a8a8a0] text-sm font-medium">Watch:</span>
-                                                <ul className="mt-2 space-y-1 text-[#a8a8a0] text-sm">
-                                                    {accountInsights.watchItems.map((w, i) => (
-                                                        <li key={i}>• {w}</li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        )}
+                                        <p className="text-white font-medium mt-3 text-sm">{accountInsights.portfolioObservation}</p>
                                     </div>
                                 ) : (
                                     <p className="text-[#a8a8a0] text-sm">Enable AI to see account insights.</p>
                                 )}
                             </div>
 
-                            {/* Profitable Positions Gauge */}
-                            {(() => {
-                                const profitableCount = mergedPositions.filter(p => (livePrices[p.ticker] ?? p.avgCost) > p.avgCost).length;
-                                const total = mergedPositions.length;
-                                const pct = total > 0 ? Math.round((profitableCount / total) * 100) : 0;
-                                const circumference = 263.89;
-                                const dashOffset = circumference - (pct / 100) * circumference;
-                                return (
-                                    <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-8 shadow-xl flex flex-col items-center justify-center">
-                                        <h3 className="text-lg font-medium text-[#a8a8a0] mb-6 text-center font-serif" style={{ fontFamily: 'Playfair Display, serif' }}>Profitable Positions</h3>
-                                        <div className="relative w-32 h-32 flex items-center justify-center">
-                                            <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
-                                                <circle cx="50" cy="50" r="42" stroke="#1a2a22" strokeWidth="6" fill="none" />
-                                                <circle cx="50" cy="50" r="42" stroke={pct >= 50 ? "#4ade9a" : "#f87171"} strokeWidth="6" fill="none"
-                                                    strokeDasharray={circumference} strokeDashoffset={dashOffset} strokeLinecap="round"
-                                                    style={{ transition: "stroke-dashoffset 1s ease-out" }} />
-                                            </svg>
-                                            <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                                <span className="text-3xl font-bold text-white tracking-tighter" style={{ fontFamily: 'Playfair Display, serif' }}>
-                                                    {total === 0 ? "—" : pct}<span className="text-lg" style={{ color: pct >= 50 ? "#4ade9a" : "#f87171" }}>{total > 0 ? "%" : ""}</span>
-                                                </span>
-                                                {total > 0 && <span className="text-xs text-[#a8a8a0] mt-1">{profitableCount} of {total}</span>}
+                            {/* Right column: Profitable Positions + Portfolio Return stacked */}
+                            <div className="lg:col-span-1 lg:row-span-2 flex flex-col gap-6">
+                                {/* Profitable Positions Gauge */}
+                                {(() => {
+                                    const profitableCount = mergedPositions.filter(p => (livePrices[p.ticker] ?? p.avgCost) > p.avgCost).length;
+                                    const total = mergedPositions.length;
+                                    const pct = total > 0 ? Math.round((profitableCount / total) * 100) : 0;
+                                    const circumference = 263.89;
+                                    const dashOffset = circumference - (pct / 100) * circumference;
+                                    return (
+                                        <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-8 shadow-xl flex flex-col items-center justify-center">
+                                            <h3 className="text-lg font-medium text-[#a8a8a0] mb-6 text-center font-serif" style={{ fontFamily: 'Playfair Display, serif' }}>Profitable Positions</h3>
+                                            <div className="relative w-32 h-32 flex items-center justify-center">
+                                                <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
+                                                    <circle cx="50" cy="50" r="42" stroke="#1a2a22" strokeWidth="6" fill="none" />
+                                                    <circle cx="50" cy="50" r="42" stroke={pct >= 50 ? "#4ade9a" : "#f87171"} strokeWidth="6" fill="none"
+                                                        strokeDasharray={circumference} strokeDashoffset={dashOffset} strokeLinecap="round"
+                                                        style={{ transition: "stroke-dashoffset 1s ease-out" }} />
+                                                </svg>
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                                    <span className="text-3xl font-bold text-white tracking-tighter" style={{ fontFamily: 'Playfair Display, serif' }}>
+                                                        {total === 0 ? "—" : pct}<span className="text-lg" style={{ color: pct >= 50 ? "#4ade9a" : "#f87171" }}>{total > 0 ? "%" : ""}</span>
+                                                    </span>
+                                                    {total > 0 && <span className="text-xs text-[#a8a8a0] mt-1">{profitableCount} of {total}</span>}
+                                                </div>
                                             </div>
                                         </div>
+                                    );
+                                })()}
+
+                                {/* Performance Card - directly below Profitable Positions */}
+                                <div className="bg-gradient-to-br from-[#4ade9a]/20 to-[#4ade9a]/5 border border-[#4ade9a]/30 rounded-3xl p-6 flex flex-col gap-4">
+                                    <div>
+                                        <span className="text-4xl font-bold text-[#4ade9a] tracking-tighter block mb-1">+{totalReturn.toFixed(1)}%</span>
+                                        <span className="text-xs text-[#4ade9a] uppercase tracking-widest font-bold">Portfolio Return</span>
                                     </div>
-                                );
-                            })()}
+                                    <div>
+                                        <h3 className="text-xl font-serif font-bold leading-tight text-white" style={{ fontFamily: 'Playfair Display, serif' }}>
+                                            {isPortfolioUp ? "Beating the Market!" : "Building Wealth"}
+                                        </h3>
+                                        <div className="w-10 h-1 bg-[#4ade9a] rounded-full mt-3" />
+                                    </div>
+                                </div>
+                            </div>
 
                             {/* Lookout Section */}
                             <div className="lg:col-span-2 bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-8 shadow-xl">
@@ -649,20 +711,6 @@ export default function PortfolioPage() {
                                 ) : (
                                     <p className="text-[#a8a8a0] text-sm">No lookout signals in this timeframe. Enable AI for analysis.</p>
                                 )}
-                            </div>
-
-                            {/* Performance Card */}
-                            <div className="bg-gradient-to-br from-[#4ade9a]/20 to-[#4ade9a]/5 border border-[#4ade9a]/30 rounded-3xl p-6 flex flex-col justify-between">
-                                <div>
-                                    <span className="text-4xl font-bold text-[#4ade9a] tracking-tighter block mb-1">+{totalReturn.toFixed(1)}%</span>
-                                    <span className="text-xs text-[#4ade9a] uppercase tracking-widest font-bold">Portfolio Return</span>
-                                </div>
-                                <div>
-                                    <h3 className="text-xl font-serif font-bold leading-tight text-white" style={{ fontFamily: 'Playfair Display, serif' }}>
-                                        {isPortfolioUp ? "Beating the Market!" : "Building Wealth"}
-                                    </h3>
-                                    <div className="w-10 h-1 bg-[#4ade9a] rounded-full mt-3" />
-                                </div>
                             </div>
                         </BentoGrid>
                     </div>
