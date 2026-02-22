@@ -171,8 +171,7 @@ export type LookoutResult = {
 
 export type TickerOverviewResult = {
     priceBehavior: string;
-    sentiment: string;
-    hypeScore: number;
+    recentNewsAndFundamentals: string;
     fundamentalContext: string;
     risks: string[];
     outlook: string;
@@ -310,8 +309,7 @@ ${newsContext}
 Analyze using the news context above and your knowledge. Output JSON:
 {
   "priceBehavior": "<recent trend, volatility, momentum shifts>",
-  "sentiment": "<investor sentiment evaluation>",
-  "hypeScore": <0-100>,
+  "recentNewsAndFundamentals": "<2-4 bullets summarizing recent news: company fundamentals, products, earnings. Each bullet distills one news item or theme.>",
   "fundamentalContext": "<growth profile, perceived positioning>",
   "risks": ["<risk1>", "<risk2>", ...],
   "outlook": "<bullish|neutral|bearish, short|medium|long term, reasoning>"

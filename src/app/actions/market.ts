@@ -115,6 +115,40 @@ export async function getQuote(symbol: string): Promise<{ symbol: string; price:
     }
 }
 
+export type KeyStatistics = {
+    trailingPE: number | null;
+    forwardPE: number | null;
+    marketCap: number | null;
+    fiftyTwoWeekHigh: number | null;
+    fiftyTwoWeekLow: number | null;
+    averageVolume: number | null;
+};
+
+export async function getKeyStatistics(symbol: string): Promise<KeyStatistics> {
+    const empty: KeyStatistics = { trailingPE: null, forwardPE: null, marketCap: null, fiftyTwoWeekHigh: null, fiftyTwoWeekLow: null, averageVolume: null };
+    try {
+        const res = await fetch(
+            `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbol)}`,
+            { headers: { "User-Agent": "Mozilla/5.0" }, next: { revalidate: 900 } }
+        );
+        if (!res.ok) return empty;
+        const json = await res.json();
+        const q = json?.quoteResponse?.result?.[0];
+        if (!q) return empty;
+        return {
+            trailingPE: q.trailingPE ?? null,
+            forwardPE: q.forwardPE ?? null,
+            marketCap: q.marketCap ?? null,
+            fiftyTwoWeekHigh: q.fiftyTwoWeekHigh ?? null,
+            fiftyTwoWeekLow: q.fiftyTwoWeekLow ?? null,
+            averageVolume: q.averageVolume ?? null,
+        };
+    } catch (error) {
+        console.error("Failed to fetch key statistics:", error);
+        return empty;
+    }
+}
+
 export async function getChartData(symbol: string): Promise<{ date: string; open: number; high: number; low: number; close: number; volume: number }[]> {
     try {
         const res = await fetch(
