@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { searchTickers, getMarketIndex, getTopGainersLosers, getVolumeLeaders, getSectorPerformance, getEarningsCalendar, getEconomicCalendar, getBatchQuotes, getMarketBreadth, getFearGreedIndex } from "@/app/actions/market";
+import { searchTickers, getMarketIndex, getTopGainersLosers, getVolumeLeaders, getSectorPerformance, getEarningsCalendar, getFinnhubMarketNews, getBatchQuotes, getMarketBreadth, getFearGreedIndex } from "@/app/actions/market";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
@@ -11,7 +11,7 @@ type IndexCard = { label: string; symbol: string; price: number; change: number;
 type MoverItem = { symbol: string; name: string; price: number; change: number; changesPercentage: number; volume: number };
 type SectorItem = { symbol: string; name: string; shortName: string; price: number; change: number; changesPercentage: number };
 type EarningItem = { symbol: string; name: string; epsEstimate: string };
-type EconomicEvent = { time: string; event: string; impact: "high" | "medium" | "low"; forecast: string };
+type NewsItem = { headline: string; source: string; datetime: number; url?: string };
 
 // ─── Helpers ──────────────────────────────────────────────────
 function generateSparklinePath(prices: number[]): string {
@@ -138,7 +138,7 @@ export default function MarketsPage() {
     // Calendar
     const [earningsBefore, setEarningsBefore] = useState<EarningItem[]>([]);
     const [earningsAfter, setEarningsAfter] = useState<EarningItem[]>([]);
-    const [economicEvents, setEconomicEvents] = useState<EconomicEvent[]>([]);
+    const [marketNews, setMarketNews] = useState<NewsItem[]>([]);
 
     // Watchlist
     const [watchlistData, setWatchlistData] = useState<{ symbol: string; price: number; pct: number; pos: boolean }[]>([]);
@@ -190,11 +190,11 @@ export default function MarketsPage() {
         getSectorPerformance().then(setSectors);
 
         // Calendar
-        Promise.all([getEarningsCalendar(), getEconomicCalendar()]).then(([earnings, economic]) => {
+        getEarningsCalendar().then((earnings) => {
             setEarningsBefore(earnings.beforeOpen);
             setEarningsAfter(earnings.afterClose);
-            setEconomicEvents(economic);
         });
+        getFinnhubMarketNews().then(setMarketNews);
 
         // Watchlist
         const loadWatchlist = async () => {
@@ -474,24 +474,29 @@ export default function MarketsPage() {
                     </div>
                 </div>
 
-                {/* Economic Releases */}
+                {/* Top News from Finnhub */}
                 <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl overflow-hidden shadow-lg">
                     <div className="px-5 py-4 border-b border-[#2a3d30]/50">
-                        <span className="text-sm font-bold text-[#a8a8a0] uppercase tracking-wider">📊 Economic Releases</span>
+                        <span className="text-sm font-bold text-[#a8a8a0] uppercase tracking-wider">📰 Top News</span>
                     </div>
-                    {economicEvents.map((ev, i) => (
-                        <div key={i} className="flex items-center px-5 py-4 border-b border-[#2a3d30]/50 last:border-0 gap-4">
-                            <span className={`w-3 h-3 rounded-full shrink-0 ${ev.impact === "high" ? "bg-red-500" : ev.impact === "medium" ? "bg-amber-400" : "bg-[#2a3d30]"}`} />
-                            <div className="flex flex-col flex-1 min-w-0">
-                                <span className="text-lg font-semibold text-[#f0ede8]">{ev.event}</span>
-                                <span className="text-base text-[#a8a8a0]">{ev.time}</span>
-                            </div>
-                            <div className="flex flex-col items-end">
-                                <span className="text-base text-[#a8a8a0] font-semibold">{ev.forecast}</span>
-                                <span className={`text-sm capitalize ${ev.impact === "high" ? "text-red-400" : ev.impact === "medium" ? "text-amber-400" : "text-[#a8a8a0]"}`}>{ev.impact}</span>
-                            </div>
-                        </div>
-                    ))}
+                    {marketNews.length === 0 ? (
+                        <div className="px-5 py-8 text-center text-[#a8a8a0] text-sm">Loading news...</div>
+                    ) : (
+                        marketNews.map((item, i) => (
+                            <a
+                                key={i}
+                                href={item.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex flex-col px-5 py-4 border-b border-[#2a3d30]/50 last:border-0 hover:bg-[#1a2a22] transition-colors gap-1"
+                            >
+                                <span className="text-base font-semibold text-[#f0ede8] line-clamp-2">{item.headline}</span>
+                                <span className="text-sm text-[#a8a8a0]">
+                                    {item.source} · {new Date(item.datetime * 1000).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}
+                                </span>
+                            </a>
+                        ))
+                    )}
                 </div>
             </div>
 
