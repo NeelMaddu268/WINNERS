@@ -54,7 +54,7 @@ export default function Navbar() {
                         <span className="text-[#0d1a14] font-bold text-lg">C</span>
                     </div>
                     <span className="font-semibold text-lg tracking-tight text-[#f0ede8] hidden sm:block">
-                        CashMere
+                        Cashmere
                     </span>
                 </Link>
             </div>

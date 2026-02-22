@@ -12,7 +12,7 @@ export default function Home() {
           <div className="w-10 h-10 bg-[#4ade9a] rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(74,222,154,0.3)]">
             <span className="text-[#0d1a14] font-bold text-xl">C</span>
           </div>
-          <span className="font-serif font-bold text-3xl tracking-tight text-white" style={{ fontFamily: 'Playfair Display, serif' }}>CashMere</span>
+          <span className="font-serif font-bold text-3xl tracking-tight text-white" style={{ fontFamily: 'Playfair Display, serif' }}>Cashmere</span>
         </div>
 
         <div className="w-full">

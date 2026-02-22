@@ -285,7 +285,7 @@ export default function SetupPage() {
                     <div className="w-7 h-7 bg-[#4ade9a] rounded-md flex items-center justify-center shrink-0">
                         <span className="text-[#0d1a14] font-bold text-sm">C</span>
                     </div>
-                    <span className="font-semibold text-sm tracking-tight text-[#f0ede8]">CashMere</span>
+                    <span className="font-semibold text-sm tracking-tight text-[#f0ede8]">Cashmere</span>
                 </div>
 
                 <ProgressBar step={step} />

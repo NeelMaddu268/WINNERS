@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, ReactNode } from 'react';
 import { getTickerData } from './actions/ticker';
 
 const faqs = [
-    { q: 'How does the AI generate stock insights?', a: 'CashMere leverages Google\'s Gemini 2.0 model to analyze real-time market data, company news, and financial statements to provide high-velocity intelligence on any ticker.' },
+    { q: 'How does the AI generate stock insights?', a: 'Cashmere leverages Google\'s Gemini 2.0 model to analyze real-time market data, company news, and financial statements to provide high-velocity intelligence on any ticker.' },
     { q: 'Where does the market data come from?', a: 'We integrate with professional-grade financial APIs like Yahoo Finance to bring you real-time prices, historical charts, and sector-wide performance data.' },
     { q: 'What is "High-Velocity Discovery"?', a: 'It\'s our intelligent screening tool that instantly highlights top gainers, losers, and high-volume movers, allowing you to identify market opportunities the second they happen.' },
     { q: 'What is the Fear & Greed Index?', a: 'It\'s a sentiment engine that processes market momentum, volatility, and breadth to help you gauge whether the market is currently in a state of panic or extreme greed.' },
@@ -209,7 +209,7 @@ export default function Home() {
 
     return (
         <div className="bg-gradient-to-br from-[#0d1a14] via-[#111c18] to-[#0d1f1a] text-[#f0ede8] relative">
-            {/* Initial CashMere display with sliding letters */}
+            {/* Initial Cashmere display with sliding letters */}
             {!showContent && (
                 <div className="fixed inset-0 flex items-center justify-center z-50 bg-gradient-to-br from-[#0d1a14] via-[#111c18] to-[#0d1f1a]">
                     <div className="text-center px-8 py-16">
@@ -312,7 +312,7 @@ export default function Home() {
                         <div className="w-8 h-8 bg-[#4ade9a] rounded-lg flex items-center justify-center">
                             <span className="text-[#0d1a14] font-bold text-sm">C</span>
                         </div>
-                        <span className="font-semibold text-lg tracking-tight">CashMere</span>
+                        <span className="font-semibold text-lg tracking-tight">Cashmere</span>
                     </div>
                     <Link href="/login" className={`px-6 py-2 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-full text-sm font-semibold transition animate-btnPulse duration-1000 cursor-pointer ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>Continue</Link>
                 </div>
@@ -431,7 +431,7 @@ export default function Home() {
                 <div className="max-w-5xl mx-auto">
                     <AnimateIn className="text-center mb-16">
                         <h2 className="text-4xl md:text-5xl font-serif font-bold mb-4" style={{ fontFamily: 'Playfair Display, serif' }}>
-                            The numbers behind<br />CashMere
+                            The numbers behind<br />Cashmere
                         </h2>
                         <p className="text-lg text-[#a8a8a0]">Built for investors who want more from their platform</p>
                     </AnimateIn>
@@ -467,7 +467,7 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* What is CashMere — Two Column */}
+            {/* What is Cashmere — Two Column */}
             <section className="relative py-28 px-6" style={{ background: 'linear-gradient(to bottom, #0d1a14, #0f1d17)' }}>
                 <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
                     {/* Left — Large heading with geometric wireframe */}
@@ -511,20 +511,20 @@ export default function Home() {
                         <div>
                             <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#1a2a22]/80 border border-[#2a3d30] rounded-full mb-6">
                                 <div className="w-2 h-2 bg-[#4ade9a] rounded-full animate-pulse"></div>
-                                <span className="text-xs text-[#a8a8a0] font-medium uppercase tracking-wide">What is CashMere?</span>
+                                <span className="text-xs text-[#a8a8a0] font-medium uppercase tracking-wide">What is Cashmere?</span>
                             </div>
                             <h3 className="text-2xl md:text-3xl font-bold mb-6 text-white leading-snug">
                                 Trade on any market with institutional-grade capital
                             </h3>
                             <div className="space-y-4 text-[#a8a8a0] leading-relaxed">
                                 <p>
-                                    CashMere gives you access to the same tools and capital that hedge funds and institutional traders use — without the barriers. Whether you trade stocks, crypto, or options, our platform levels the playing field.
+                                    Cashmere gives you access to the same tools and capital that hedge funds and institutional traders use — without the barriers. Whether you trade stocks, crypto, or options, our platform levels the playing field.
                                 </p>
                                 <p>
                                     With AI-driven insights, real-time analytics, and zero-commission trading, you can make smarter decisions faster. Our technology processes millions of data points so you don't have to.
                                 </p>
                                 <p>
-                                    Join a global community of investors who trust CashMere to grow their wealth with confidence, transparency, and cutting-edge infrastructure.
+                                    Join a global community of investors who trust Cashmere to grow their wealth with confidence, transparency, and cutting-edge infrastructure.
                                 </p>
                             </div>
                         </div>
@@ -532,7 +532,7 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* 2. Why Choose CashMere */}
+            {/* 2. Why Choose Cashmere */}
             <section className="relative py-28 px-6 overflow-hidden" style={{ background: 'linear-gradient(to bottom, #0d1a14, #111c18)' }}>
                 {/* Cinematic watermark */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
@@ -540,7 +540,7 @@ export default function Home() {
                 </div>
                 <div className="max-w-6xl mx-auto">
                     <AnimateIn className="text-center mb-16">
-                        <h2 className="text-5xl md:text-6xl font-serif font-bold mb-4" style={{ fontFamily: 'Playfair Display, serif' }}>Why choose CashMere?</h2>
+                        <h2 className="text-5xl md:text-6xl font-serif font-bold mb-4" style={{ fontFamily: 'Playfair Display, serif' }}>Why choose Cashmere?</h2>
                         <p className="text-lg text-[#a8a8a0] max-w-2xl mx-auto">Everything you need to trade smarter, faster, and with confidence</p>
                     </AnimateIn>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -616,7 +616,7 @@ export default function Home() {
                                 <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></div>
                                 <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]"></div>
                                 <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]"></div>
-                                <span className="ml-2 text-[10px] text-[#a8a8a0]">CashMere — AI Insights</span>
+                                <span className="ml-2 text-[10px] text-[#a8a8a0]">Cashmere — AI Insights</span>
                             </div>
                             <div className="p-8 space-y-6">
                                 {/* AI Summary Card */}
@@ -925,7 +925,7 @@ export default function Home() {
                                             <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></div>
                                             <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]"></div>
                                             <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]"></div>
-                                            <span className="ml-2 text-[10px] text-[#a8a8a0]">CashMere — Feed</span>
+                                            <span className="ml-2 text-[10px] text-[#a8a8a0]">Cashmere — Feed</span>
                                         </div>
                                         <div className="p-5 space-y-3">
                                             {[
@@ -1028,9 +1028,9 @@ export default function Home() {
                     </AnimateIn>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         {[
-                            { name: 'Neel M.', text: 'CashMere completely changed how I invest. The AI insights are incredible.' },
+                            { name: 'Neel M.', text: 'Cashmere completely changed how I invest. The AI insights are incredible.' },
                             { name: 'Karan K.', text: 'Best trading platform I have used. Clean interface and powerful tools.' },
-                            { name: 'Anubhav B.', text: 'CashMere makes complicated stock information so easy to understand.' },
+                            { name: 'Anubhav B.', text: 'Cashmere makes complicated stock information so easy to understand.' },
                         ].map((t, i) => (
                             <AnimateIn key={i} delay={i * 0.12}>
                                 <div className="p-8 bg-[#1a2a22]/50 border border-[#2a3d30] rounded-xl hover:border-[#4ade9a]/30 transition-all duration-300 hover:-translate-y-1 cursor-pointer">
@@ -1116,7 +1116,7 @@ export default function Home() {
                         </h2>
 
                         <p className="text-lg text-[#a8a8a0] mb-10 max-w-xl mx-auto leading-relaxed">
-                            Join millions of investors worldwide who trust CashMere to grow their wealth with cutting-edge tools and zero barriers.
+                            Join millions of investors worldwide who trust Cashmere to grow their wealth with cutting-edge tools and zero barriers.
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
