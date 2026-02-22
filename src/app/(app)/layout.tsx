@@ -46,7 +46,7 @@ export default function AppLayout({
     return (
         <div className="min-h-screen bg-black text-zinc-50">
             <Navbar />
-            <main className="max-w-4xl mx-auto px-4 pb-4 pt-24 sm:px-6 sm:pb-6 sm:pt-24 lg:px-8 lg:pb-8 lg:pt-24">
+            <main className="w-full px-4 pb-4 pt-24 sm:px-6 sm:pb-6 sm:pt-24 lg:px-8 lg:pb-8 lg:pt-24">
                 {children}
             </main>
         </div>

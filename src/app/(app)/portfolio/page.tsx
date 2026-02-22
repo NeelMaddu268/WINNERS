@@ -289,7 +289,7 @@ export default function PortfolioPage() {
 
     return (
         <div className="min-h-screen bg-[#0d1a14]">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="flex flex-col gap-6 w-full animate-in fade-in slide-in-from-bottom-4 duration-700 font-sans text-[#f0ede8]">
                     {/* Header */}
                     <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 border-b border-[#2a3d30]/50 pb-6">
@@ -522,9 +522,9 @@ export default function PortfolioPage() {
                         </div>
                     )}
 
-            {/* Account Insights Section */}
-            <div className="mt-8 border-t border-white/5 pt-12">
-                <h2 className="text-2xl font-serif font-bold mb-8 text-[#f0ede8]" style={{ fontFamily: 'Playfair Display, serif' }}>Account Insights</h2>
+                    {/* Account Insights Section */}
+                    <div className="mt-8 border-t border-white/5 pt-12">
+                        <h2 className="text-2xl font-serif font-bold mb-8 text-[#f0ede8]" style={{ fontFamily: 'Playfair Display, serif' }}>Account Insights</h2>
 
                         <BentoGrid className="lg:grid-rows-2 grid-cols-1 lg:grid-cols-3 gap-6">
                             {/* Account Insights */}
