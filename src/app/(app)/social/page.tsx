@@ -214,13 +214,13 @@ export default function SocialPage() {
             <div className="flex gap-2 mb-6">
                 <button
                     onClick={() => setActiveTab("explore")}
-                    className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 ${activeTab === "explore" ? "bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-[#111c18] border border-[#2a3d30]/50 text-[#a8a8a0] hover:text-white hover:border-[#4ade9a]/50"}`}
+                    className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 cursor-pointer ${activeTab === "explore" ? "bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "bg-[#111c18] border border-[#2a3d30]/50 text-[#a8a8a0] hover:text-white hover:border-[#4ade9a]/50"}`}
                 >
                     Explore
                 </button>
                 <button
                     onClick={() => setActiveTab("friends")}
-                    className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 ${activeTab === "friends" ? "bg-[#4ade9a] text-[#0d1a14] shadow-[0_0_15px_rgba(74,222,154,0.3)]" : "bg-[#111c18] border border-[#2a3d30]/50 text-[#a8a8a0] hover:text-white hover:border-[#4ade9a]/50"}`}
+                    className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 cursor-pointer ${activeTab === "friends" ? "bg-[#4ade9a] text-[#0d1a14] shadow-[0_0_15px_rgba(74,222,154,0.3)]" : "bg-[#111c18] border border-[#2a3d30]/50 text-[#a8a8a0] hover:text-white hover:border-[#4ade9a]/50"}`}
                 >
                     Friends Only
                 </button>
@@ -286,7 +286,7 @@ export default function SocialPage() {
                                 <div className="flex items-center gap-6 text-[#a8a8a0] font-medium text-sm px-2">
                                     <button
                                         onClick={() => toggleLike(activity)}
-                                        className={`flex items-center gap-2 transition-colors ${likedByMe ? 'text-[#00c805]' : 'hover:text-[#00c805]'}`}
+                                        className={`flex items-center gap-2 transition-colors cursor-pointer ${likedByMe ? 'text-[#00c805]' : 'hover:text-[#00c805]'}`}
                                     >
                                         <svg className={`w-6 h-6 transform transition-transform ${likedByMe ? 'scale-110' : ''}`} fill={likedByMe ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
@@ -295,7 +295,7 @@ export default function SocialPage() {
                                     </button>
                                     <button
                                         onClick={() => setOpenCommentsId(openCommentsId === activity.id ? null : activity.id)}
-                                        className={`flex items-center gap-2 transition-colors ${openCommentsId === activity.id ? 'text-white' : 'hover:text-white'}`}
+                                        className={`flex items-center gap-2 transition-colors cursor-pointer ${openCommentsId === activity.id ? 'text-white' : 'hover:text-white'}`}
                                     >
                                         <svg className="w-6 h-6" fill={openCommentsId === activity.id ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -339,7 +339,7 @@ export default function SocialPage() {
                                             <button
                                                 onClick={() => handleAddComment(activity.id)}
                                                 disabled={!newCommentText.trim() || !currentUser}
-                                                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#00c805] hover:bg-[#00e306] text-black rounded-full transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-[#00c805] hover:bg-[#00e306] text-black rounded-full transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                                             >
                                                 <svg className="w-4 h-4 translate-x-[1px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 12h14M12 5l7 7-7 7" /></svg>
                                             </button>
@@ -375,7 +375,7 @@ export default function SocialPage() {
                             </div>
 
                             {/* Close Button */}
-                            <button onClick={() => setSelectedFriend(null)} className="absolute top-0 right-4 -translate-y-[4.5rem] text-[#a8a8a0] hover:text-[#f0ede8] bg-[#1a2a22] hover:bg-[#2a3d30] w-10 h-10 rounded-full flex items-center justify-center border border-[#2a3d30] transition z-20">
+                            <button onClick={() => setSelectedFriend(null)} className="absolute top-0 right-4 -translate-y-[4.5rem] text-[#a8a8a0] hover:text-[#f0ede8] bg-[#1a2a22] hover:bg-[#2a3d30] w-10 h-10 rounded-full flex items-center justify-center border border-[#2a3d30] transition z-20 cursor-pointer">
                                 ✕
                             </button>
 
@@ -425,7 +425,7 @@ export default function SocialPage() {
                             </div>
 
                             {/* Action Button */}
-                            <button onClick={() => router.push(`/profile/${selectedFriend.uid}`)} className="w-full mt-10 py-4 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-2xl font-bold tracking-wide transition-all">
+                            <button onClick={() => router.push(`/profile/${selectedFriend.uid}`)} className="w-full mt-10 py-4 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-2xl font-bold tracking-wide transition-all cursor-pointer">
                                 View Full Profile
                             </button>
                         </div>

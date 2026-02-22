@@ -194,13 +194,13 @@ export default function FriendsPage() {
             <div className="flex gap-2 mb-6">
                 <button
                     onClick={() => setActiveTab("friends")}
-                    className={`px-5 py-2.5 rounded-full text-base font-bold transition ${activeTab === "friends" ? "bg-white text-black" : "bg-zinc-800 text-zinc-400 hover:text-white"}`}
+                    className={`px-5 py-2.5 rounded-full text-base font-bold transition cursor-pointer ${activeTab === "friends" ? "bg-white text-black" : "bg-zinc-800 text-zinc-400 hover:text-white"}`}
                 >
                     My Friends ({friendsList.length})
                 </button>
                 <button
                     onClick={() => setActiveTab("requests")}
-                    className={`px-5 py-2.5 rounded-full text-base font-bold transition flex items-center gap-2 ${activeTab === "requests" ? "bg-white text-black" : "bg-zinc-800 text-zinc-400 hover:text-white"}`}
+                    className={`px-5 py-2.5 rounded-full text-base font-bold transition flex items-center gap-2 cursor-pointer ${activeTab === "requests" ? "bg-white text-black" : "bg-zinc-800 text-zinc-400 hover:text-white"}`}
                 >
                     Requests
                     {incomingRequests.length > 0 && (
@@ -211,7 +211,7 @@ export default function FriendsPage() {
                 </button>
                 <button
                     onClick={() => setActiveTab("search")}
-                    className={`px-5 py-2.5 rounded-full text-base font-bold transition flex items-center gap-2 ${activeTab === "search" ? "bg-white text-black" : "bg-zinc-800 text-zinc-400 hover:text-white"}`}
+                    className={`px-5 py-2.5 rounded-full text-base font-bold transition flex items-center gap-2 cursor-pointer ${activeTab === "search" ? "bg-white text-black" : "bg-zinc-800 text-zinc-400 hover:text-white"}`}
                 >
                     Add Friends
                 </button>
@@ -242,7 +242,7 @@ export default function FriendsPage() {
                                             e.stopPropagation();
                                             setUserToUnfriend(f);
                                         }}
-                                        className="w-8 h-8 rounded-full bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition flex items-center justify-center border border-red-500/20"
+                                        className="w-8 h-8 rounded-full bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition flex items-center justify-center border border-red-500/20 cursor-pointer"
                                         title="Unfriend"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -276,10 +276,10 @@ export default function FriendsPage() {
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
-                                            <button onClick={() => acceptRequest(req.id, req.fromUid)} className="w-10 h-10 rounded-full bg-[#00c805]/20 text-[#00c805] flex items-center justify-center hover:bg-[#00c805]/30 transition">
+                                            <button onClick={() => acceptRequest(req.id, req.fromUid)} className="w-10 h-10 rounded-full bg-[#00c805]/20 text-[#00c805] flex items-center justify-center hover:bg-[#00c805]/30 transition cursor-pointer">
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                                             </button>
-                                            <button onClick={() => declineRequest(req.id)} className="w-10 h-10 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center hover:bg-red-500/30 transition">
+                                            <button onClick={() => declineRequest(req.id)} className="w-10 h-10 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center hover:bg-red-500/30 transition cursor-pointer">
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
                                             </button>
                                         </div>
@@ -329,7 +329,7 @@ export default function FriendsPage() {
                             onKeyDown={e => e.key === 'Enter' && handleSearch()}
                             className="flex-1 min-w-0 bg-transparent text-white placeholder-zinc-400 text-base focus:outline-none"
                         />
-                        <button onClick={handleSearch} className="text-sm font-bold bg-white text-black px-4 py-2 rounded-lg hover:bg-zinc-200 transition">
+                        <button onClick={handleSearch} className="text-sm font-bold bg-white text-black px-4 py-2 rounded-lg hover:bg-zinc-200 transition cursor-pointer">
                             {isSearching ? "..." : "Search"}
                         </button>
                     </div>
@@ -364,7 +364,7 @@ export default function FriendsPage() {
                                     ) : (
                                         <button
                                             onClick={() => sendRequest(user.uid)}
-                                            className="text-sm font-bold bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg transition"
+                                            className="text-sm font-bold bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg transition cursor-pointer"
                                         >
                                             Add Friend
                                         </button>

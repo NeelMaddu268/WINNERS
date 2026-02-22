@@ -365,7 +365,7 @@ export default function MarketsPage() {
                         ))
                         : watchlistData.map(w => (
                             <button key={w.symbol} onClick={() => router.push(`/markets/${w.symbol}`)}
-                                className="flex flex-col items-center bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl px-5 py-3 min-w-[80px] shrink-0 hover:bg-[#1a2a22] transition-colors">
+                                className="flex flex-col items-center bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl px-5 py-3 min-w-[80px] shrink-0 hover:bg-[#1a2a22] transition-colors cursor-pointer">
                                 <span className="font-bold text-base text-[#f0ede8]">{w.symbol}</span>
                                 <span className={`text-sm font-semibold mt-0.5 ${w.pos ? "text-[#4ade9a]" : "text-red-500"}`}>
                                     {w.pos ? "+" : ""}{w.pct.toFixed(2)}%
@@ -383,7 +383,7 @@ export default function MarketsPage() {
                         <button
                             key={tab}
                             onClick={() => setDiscoveryTab(tab)}
-                            className={`flex-1 text-sm font-bold py-2 rounded-full capitalize transition-all duration-200 ${discoveryTab === tab
+                            className={`flex-1 text-sm font-bold py-2 rounded-full capitalize transition-all duration-200 cursor-pointer ${discoveryTab === tab
                                 ? "bg-[#4ade9a] text-[#0a120f]"
                                 : "text-[#a8a8a0] hover:text-[#f0ede8]"
                                 }`}
@@ -420,7 +420,7 @@ export default function MarketsPage() {
                             const { bg, text } = sectorColor(s.changesPercentage);
                             return (
                                 <button key={s.symbol} onClick={() => router.push(`/markets/${s.symbol}`)}
-                                    className={`flex flex-col items-center justify-center rounded-2xl border p-4 h-28 transition-transform hover:scale-105 ${bg}`}>
+                                    className={`flex flex-col items-center justify-center rounded-2xl border p-4 h-28 transition-transform hover:scale-105 cursor-pointer ${bg}`}>
                                     <span className="text-base font-bold text-[#f0ede8] leading-tight text-center">{s.shortName}</span>
                                     <span className={`text-lg font-black mt-1 ${text}`}>
                                         {s.changesPercentage >= 0 ? "+" : ""}{s.changesPercentage.toFixed(2)}%
@@ -450,7 +450,7 @@ export default function MarketsPage() {
                         <div className="flex-1 border-r border-[#2a3d30]/50 py-2">
                             {earningsBefore.map(e => (
                                 <button key={e.symbol} onClick={() => router.push(`/markets/${e.symbol}`)}
-                                    className="w-full flex items-center justify-between px-5 py-4 hover:bg-[#1a2a22] transition-colors">
+                                    className="w-full flex items-center justify-between px-5 py-4 hover:bg-[#1a2a22] transition-colors cursor-pointer">
                                     <div className="flex flex-col items-start">
                                         <span className="font-bold text-lg text-[#f0ede8]">{e.symbol}</span>
                                         <span className="text-sm text-[#a8a8a0]">{e.epsEstimate}</span>
@@ -462,7 +462,7 @@ export default function MarketsPage() {
                         <div className="flex-1 py-2">
                             {earningsAfter.map(e => (
                                 <button key={e.symbol} onClick={() => router.push(`/markets/${e.symbol}`)}
-                                    className="w-full flex items-center justify-between px-5 py-4 hover:bg-[#1a2a22] transition-colors">
+                                    className="w-full flex items-center justify-between px-5 py-4 hover:bg-[#1a2a22] transition-colors cursor-pointer">
                                     <div className="flex flex-col items-start">
                                         <span className="font-bold text-lg text-[#f0ede8]">{e.symbol}</span>
                                         <span className="text-sm text-[#a8a8a0]">{e.epsEstimate}</span>

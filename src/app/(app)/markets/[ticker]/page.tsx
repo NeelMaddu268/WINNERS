@@ -623,7 +623,7 @@ export default function TickerPage() {
                         <button
                             key={tf}
                             onClick={() => setActiveTimeframe(tf)}
-                            className={`text-sm font-bold transition-all duration-200 ${activeTimeframe === tf ? "bg-zinc-800 text-white px-3.5 py-2 rounded-full" : "text-zinc-400 hover:text-white px-3.5 py-2"
+                            className={`text-sm font-bold transition-all duration-200 cursor-pointer ${activeTimeframe === tf ? "bg-zinc-800 text-white px-3.5 py-2 rounded-full" : "text-zinc-400 hover:text-white px-3.5 py-2"
                                 }`}
                         >
                             {tf}
@@ -644,7 +644,7 @@ export default function TickerPage() {
                             setRecentTradeDetails(null);
                             setIsTradeModalOpen(true);
                         }}
-                        className={`w-full py-3.5 rounded-full font-bold text-lg transition shadow-lg ${tickerData.isPositive
+                        className={`w-full py-3.5 rounded-full font-bold text-lg transition shadow-lg cursor-pointer ${tickerData.isPositive
                             ? "bg-[#00c805] hover:bg-[#00e306] text-black shadow-[#00c805]/20"
                             : "bg-[#ff5000] hover:bg-[#ff6a26] text-white shadow-[#ff5000]/20"
                             }`}

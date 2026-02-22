@@ -429,8 +429,8 @@ export default function PortfolioPage() {
             {!loading && portfolioPulse && (
                 <section className="w-full -mx-4 sm:-mx-6 lg:-mx-8 px-2 sm:px-4 lg:px-6 py-6 border-y border-[#2a3d30]/50">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2 w-full">
-                        <div className="group relative flex items-center justify-between gap-6 p-8 bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl transition-all duration-300 hover:border-[#4ade9a]/30 hover:shadow-[0_0_24px_rgba(74,222,154,0.08)] hover:-translate-y-0.5 cursor-default">
-                            <span className="text-base font-medium text-[#a8a8a0]">Valuation Risk</span>
+                        <div className="group relative flex items-center justify-between gap-6 p-8 bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl transition-all duration-300 hover:border-[#4ade9a]/30 hover:shadow-[0_0_24px_rgba(74,222,154,0.08)] hover:-translate-y-0.5 cursor-pointer">
+                            <span className="text-base font-medium text-[#a8a8a0] ">Valuation Risk</span>
                             <span className={`font-bold px-4 py-2 rounded-full text-sm border shrink-0 inline-flex items-center justify-center ${portfolioPulse.overvaluation >= 60 ? "bg-red-500/10 text-red-400 border-red-500/20" : portfolioPulse.overvaluation >= 40 ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" : "bg-[#4ade9a]/10 text-[#4ade9a] border-[#4ade9a]/20"}`}>
                                 {portfolioPulse.overvaluation}/100
                             </span>
@@ -445,7 +445,7 @@ export default function PortfolioPage() {
                                 </div>
                             )}
                         </div>
-                        <div className="group relative flex items-center justify-between gap-6 p-8 bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl transition-all duration-300 hover:border-[#4ade9a]/30 hover:shadow-[0_0_24px_rgba(74,222,154,0.08)] hover:-translate-y-0.5 cursor-default">
+                        <div className="group relative flex items-center justify-between gap-6 p-8 bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl transition-all duration-300 hover:border-[#4ade9a]/30 hover:shadow-[0_0_24px_rgba(74,222,154,0.08)] hover:-translate-y-0.5 cursor-pointer">
                             <span className="text-base font-medium text-[#a8a8a0]">Growth Potential</span>
                             <span className={`font-bold px-4 py-2 rounded-full text-sm border shrink-0 inline-flex items-center justify-center ${portfolioPulse.growthPotential >= 70 ? "bg-[#4ade9a]/10 text-[#4ade9a] border-[#4ade9a]/20" : portfolioPulse.growthPotential >= 40 ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"}`}>
                                 {portfolioPulse.growthPotential}/100
@@ -461,7 +461,7 @@ export default function PortfolioPage() {
                                 </div>
                             )}
                         </div>
-                        <div className="group relative flex items-center justify-between gap-6 p-8 bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl transition-all duration-300 hover:border-[#4ade9a]/30 hover:shadow-[0_0_24px_rgba(74,222,154,0.08)] hover:-translate-y-0.5 cursor-default">
+                        <div className="group relative flex items-center justify-between gap-6 p-8 bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl transition-all duration-300 hover:border-[#4ade9a]/30 hover:shadow-[0_0_24px_rgba(74,222,154,0.08)] hover:-translate-y-0.5 cursor-pointer">
                             <span className="text-base font-medium text-[#a8a8a0]">Political Climate</span>
                             <span className={`font-bold px-4 py-2 rounded-full text-sm border shrink-0 inline-flex items-center justify-center ${portfolioPulse.politicalClimate >= 60 ? "bg-[#4ade9a]/10 text-[#4ade9a] border-[#4ade9a]/20" : portfolioPulse.politicalClimate >= 40 ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"}`}>
                                 {portfolioPulse.politicalClimate}/100
@@ -505,7 +505,7 @@ export default function PortfolioPage() {
                                     key={tab.key}
                                     ref={el => { tabRefs.current[i] = el; }}
                                     onClick={() => setActiveTab(tab.key)}
-                                    className={activeTab === tab.key ? "relative z-10 px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 text-black" : "relative z-10 px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 text-[#a8a8a0] hover:text-white"}
+                                    className={(activeTab === tab.key ? "relative z-10 px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 text-black" : "relative z-10 px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 text-[#a8a8a0] hover:text-white") + " cursor-pointer"}
                                 >
                                     {tab.label}
                                 </button>

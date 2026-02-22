@@ -172,7 +172,7 @@ export default function PhoneAuth() {
                     <button
                         type="submit"
                         disabled={loading || !phoneNumber}
-                        className="w-full mt-2 bg-[#4ade9a] text-black font-bold py-3.5 rounded-xl hover:bg-[#22c55e] focus:outline-none focus:ring-2 focus:ring-[#4ade9a] focus:ring-offset-2 focus:ring-offset-[#111c18] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_15px_rgba(74,222,154,0.2)]"
+                        className="w-full mt-2 bg-[#4ade9a] text-black font-bold py-3.5 rounded-xl hover:bg-[#22c55e] focus:outline-none focus:ring-2 focus:ring-[#4ade9a] focus:ring-offset-2 focus:ring-offset-[#111c18] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_15px_rgba(74,222,154,0.2)] cursor-pointer"
                     >
                         {loading ? "Sending..." : "Send Verification Code"}
                     </button>
@@ -197,7 +197,7 @@ export default function PhoneAuth() {
                     <button
                         type="submit"
                         disabled={loading || !verificationCode}
-                        className="w-full mt-2 bg-[#4ade9a] text-black font-bold py-3.5 rounded-xl hover:bg-[#22c55e] focus:outline-none focus:ring-2 focus:ring-[#4ade9a] focus:ring-offset-2 focus:ring-offset-[#111c18] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_15px_rgba(74,222,154,0.2)]"
+                        className="w-full mt-2 bg-[#4ade9a] text-black font-bold py-3.5 rounded-xl hover:bg-[#22c55e] focus:outline-none focus:ring-2 focus:ring-[#4ade9a] focus:ring-offset-2 focus:ring-offset-[#111c18] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_15px_rgba(74,222,154,0.2)] cursor-pointer"
                     >
                         {loading ? "Verifying..." : "Verify Code"}
                     </button>

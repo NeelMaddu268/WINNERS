@@ -314,7 +314,7 @@ export default function Home() {
                         </div>
                         <span className="font-semibold text-lg tracking-tight">CashMere</span>
                     </div>
-                    <Link href="/login" className={`px-6 py-2 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-full text-sm font-semibold transition animate-btnPulse duration-1000 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>Continue</Link>
+                    <Link href="/login" className={`px-6 py-2 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-full text-sm font-semibold transition animate-btnPulse duration-1000 cursor-pointer ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>Continue</Link>
                 </div>
             </nav>
 
@@ -381,8 +381,8 @@ export default function Home() {
                             </AnimateIn>
                             <AnimateIn delay={0.45}>
                                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                                    <Link href="/login" className="px-8 py-3.5 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-full font-semibold transition-all duration-300 transform hover:scale-105 animate-btnPulse">Get Started</Link>
-                                    <button onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })} className="w-12 h-12 border border-[#2a3d30] hover:border-[#4ade9a] rounded-full font-semibold transition-all duration-300 flex items-center justify-center group hover:bg-[#4ade9a]/10">
+                                    <Link href="/login" className="px-8 py-3.5 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-full font-semibold transition-all duration-300 transform hover:scale-105 animate-btnPulse cursor-pointer">Get Started</Link>
+                                    <button onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })} className="w-12 h-12 border border-[#2a3d30] hover:border-[#4ade9a] rounded-full font-semibold transition-all duration-300 flex items-center justify-center group hover:bg-[#4ade9a]/10 cursor-pointer">
                                         <span className="text-lg group-hover:translate-y-1 transition">&darr;</span>
                                     </button>
                                 </div>
@@ -673,7 +673,7 @@ export default function Home() {
                                             { label: 'NASDAQ', val: '22,886.07', pct: '0.90', path: 'M0 40C10 45 20 35 30 40C40 45 50 30 60 35C70 40 80 25 90 30C100 35 110 20 120 25C130 30 140 15 150 20C160 25 170 10 180 15C190 20 200 5 210 10C220 15 230 5 240 8' },
                                             { label: 'DOW JONES', val: '49,625.97', pct: '0.47', path: 'M0 35C10 40 20 30 30 35C40 40 50 25 60 30C70 35 80 20 90 25C100 30 110 15 120 20C130 25 140 10 150 15C160 20 170 5 180 10C190 15 200 3 210 8C220 12 230 5 240 6' },
                                         ].map((idx, i) => (
-                                            <div key={i} className="bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl p-5 pt-6 pb-20 shadow-xl relative overflow-hidden group hover:border-[#4ade9a]/30 transition-all duration-500">
+                                            <div key={i} className="bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl p-5 pt-6 pb-20 shadow-xl relative overflow-hidden group hover:border-[#4ade9a]/30 transition-all duration-500 cursor-pointer">
                                                 <div className="relative z-10 flex flex-col gap-1.5">
                                                     <span className="text-[9px] font-bold tracking-widest text-[#a8a8a0] uppercase">{idx.label}</span>
                                                     <div className="flex flex-col gap-0">
@@ -767,7 +767,7 @@ export default function Home() {
                                             { name: 'Utilities', pct: '+0.48%', pos: true },
                                             { name: 'Comm.', pct: '+1.44%', pos: true },
                                         ].map((s, i) => (
-                                            <div key={i} className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all duration-300 hover:scale-[1.02] ${s.pos ? 'bg-[#4ade9a]/5 border-[#4ade9a]/10' : 'bg-red-500/5 border-red-500/10'
+                                            <div key={i} className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all duration-300 hover:scale-[1.02] cursor-pointer ${s.pos ? 'bg-[#4ade9a]/5 border-[#4ade9a]/10' : 'bg-red-500/5 border-red-500/10'
                                                 }`}>
                                                 <span className="text-[11px] font-bold text-[#a8a8a0] mb-0.5">{s.name}</span>
                                                 <span className={`text-sm font-black ${s.pos ? 'text-[#4ade9a]' : 'text-red-400'}`}>{s.pct}</span>
@@ -841,7 +841,7 @@ export default function Home() {
                                                     { ticker: 'AMZN', name: 'Amazon', shares: '1', curr: '$210.11', val: '$210', pl: '+114.32', plPct: '+119%' },
                                                     { ticker: 'META', name: 'Meta', shares: '1', curr: '$655.66', val: '$655', pl: '+187.63', plPct: '+40%' }
                                                 ].map((item, i) => (
-                                                    <div key={i} className="grid grid-cols-5 items-center py-2.5 border-b border-[#2a3d30]/10 last:border-0 hover:bg-white/[0.02] transition-colors rounded px-1.5 -mx-1.5">
+                                                    <div key={i} className="grid grid-cols-5 items-center py-2.5 border-b border-[#2a3d30]/10 last:border-0 hover:bg-white/[0.02] transition-colors rounded px-1.5 -mx-1.5 cursor-pointer">
                                                         <div>
                                                             <div className="text-[11px] font-bold text-white mb-0.5">{item.ticker}</div>
                                                             <div className="text-[9px] text-[#a8a8a0]">{item.name}</div>
@@ -864,7 +864,7 @@ export default function Home() {
                                 <div className="w-full max-w-lg mx-auto" style={{ animation: 'fadeInUp 0.4s ease' }}>
                                     {/* Compact Markets Mockup */}
                                     <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-2xl p-5 shadow-2xl relative overflow-hidden group hover:border-[#4ade9a]/30 transition-all duration-500">
-                                        <div className="bg-[#0b1410] border border-[#2a3d30]/50 rounded-xl px-3 py-2 flex items-center gap-2.5 mb-5">
+                                        <div className="bg-[#0b1410] border border-[#2a3d30]/50 rounded-xl px-3 py-2 flex items-center gap-2.5 mb-5 cursor-pointer">
                                             <svg className="w-3.5 h-3.5 text-[#a8a8a0]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                                             <span className="text-[11px] text-[#5a6b61]">Search symbol / name...</span>
                                         </div>
@@ -879,7 +879,7 @@ export default function Home() {
                                                     { t: 'AMZN', p: '+2.56%', pos: true },
                                                     { t: 'MSFT', p: '-0.31%', pos: false },
                                                 ].map((tick, i) => (
-                                                    <div key={i} className="flex-shrink-0 bg-[#0d1a14] border border-[#2a3d30] rounded-xl p-2.5 min-w-[70px] text-center">
+                                                    <div key={i} className="flex-shrink-0 bg-[#0d1a14] border border-[#2a3d30] rounded-xl p-2.5 min-w-[70px] text-center cursor-pointer hover:border-[#4ade9a]/20 transition-all">
                                                         <div className="text-[10px] font-bold text-white mb-0.5">{tick.t}</div>
                                                         <div className={`text-[8px] font-bold ${tick.pos ? 'text-[#4ade9a]' : 'text-red-400'}`}>{tick.p}</div>
                                                     </div>
@@ -890,9 +890,9 @@ export default function Home() {
                                         <div>
                                             <h3 className="text-[8px] font-bold tracking-[0.2em] text-[#a8a8a0] uppercase mb-2.5">Discovery</h3>
                                             <div className="bg-[#0b1410] border border-[#2a3d30]/50 rounded-xl p-1 flex gap-1 mb-4">
-                                                <div className="flex-1 text-center py-1.5 bg-[#4ade9a] text-[#0d1a14] rounded-lg text-[9px] font-bold shadow-lg">↑ Gainers</div>
-                                                <div className="flex-1 text-center py-1.5 text-[#a8a8a0] text-[9px] font-bold">↓ Losers</div>
-                                                <div className="flex-1 text-center py-1.5 text-[#a8a8a0] text-[9px] font-bold">⚡ Vol</div>
+                                                <div className="flex-1 text-center py-1.5 bg-[#4ade9a] text-[#0d1a14] rounded-lg text-[9px] font-bold shadow-lg cursor-pointer">↑ Gainers</div>
+                                                <div className="flex-1 text-center py-1.5 text-[#a8a8a0] text-[9px] font-bold cursor-pointer hover:text-white transition-colors">↓ Losers</div>
+                                                <div className="flex-1 text-center py-1.5 text-[#a8a8a0] text-[9px] font-bold cursor-pointer hover:text-white transition-colors">⚡ Vol</div>
                                             </div>
 
                                             <div className="space-y-0 text-white">
@@ -901,7 +901,7 @@ export default function Home() {
                                                     { s: 'LGN', n: 'Legence', p: '$55.24', ch: '+16.8%' },
                                                     { s: 'TLX', n: 'Telix Pharma', p: '$7.69', ch: '+14.6%' },
                                                 ].map((stock, i) => (
-                                                    <div key={i} className="flex items-center justify-between py-2.5 border-b border-[#2a3d30]/10 last:border-0 hover:bg-white/[0.02] transition-colors rounded px-1.5 -mx-1.5">
+                                                    <div key={i} className="flex items-center justify-between py-2.5 border-b border-[#2a3d30]/10 last:border-0 hover:bg-white/[0.02] transition-colors rounded px-1.5 -mx-1.5 cursor-pointer">
                                                         <div className="flex flex-col gap-0.5">
                                                             <span className="text-[11px] font-bold">{stock.s}</span>
                                                             <span className="text-[8px] text-[#a8a8a0]">{stock.n}</span>
@@ -929,11 +929,11 @@ export default function Home() {
                                         </div>
                                         <div className="p-5 space-y-3">
                                             {[
-                                                { avatar: 'SJ', color: 'bg-blue-500', name: 'Sarah Jenkins', time: '2h ago', action: 'purchased 15 shares of', ticker: 'TSLA', likes: 12, comments: 3 },
-                                                { avatar: 'MR', color: 'bg-purple-500', name: 'Mike Ross', time: '5h ago', action: 'hit a new all-time high portfolio value!', ticker: 'Portfolio', likes: 24, comments: 8 },
-                                                { avatar: 'EC', color: 'bg-pink-500', name: 'Elena Chen', time: '1d ago', action: 'sold their position in', ticker: 'AAPL', likes: 7, comments: 2 },
+                                                { avatar: 'SJ', color: 'bg-blue-500', name: 'Advay K', time: '2h ago', action: 'purchased 15 shares of', ticker: 'TSLA', likes: 12, comments: 3 },
+                                                { avatar: 'MR', color: 'bg-purple-500', name: 'Neel M', time: '5h ago', action: 'hit a new all-time high portfolio value!', ticker: 'Portfolio', likes: 24, comments: 8 },
+                                                { avatar: 'EC', color: 'bg-pink-500', name: 'Karan K', time: '1d ago', action: 'sold their position in', ticker: 'AAPL', likes: 7, comments: 2 },
                                             ].map((post, i) => (
-                                                <div key={i} className="bg-[#0d1a14] border border-[#2a3d30]/50 rounded-lg p-3">
+                                                <div key={i} className="bg-[#0d1a14] border border-[#2a3d30]/50 rounded-lg p-3 cursor-pointer hover:border-[#4ade9a]/20 transition-colors">
                                                     <div className="flex items-center gap-2 mb-2">
                                                         <div className={`w-7 h-7 rounded-full ${post.color} flex items-center justify-center text-[9px] font-bold text-white`}>{post.avatar}</div>
                                                         <div>
@@ -1033,7 +1033,7 @@ export default function Home() {
                             { name: 'Anubhav B.', text: 'CashMere makes complicated stock information so easy to understand.' },
                         ].map((t, i) => (
                             <AnimateIn key={i} delay={i * 0.12}>
-                                <div className="p-8 bg-[#1a2a22]/50 border border-[#2a3d30] rounded-xl hover:border-[#4ade9a]/30 transition-all duration-300 hover:-translate-y-1">
+                                <div className="p-8 bg-[#1a2a22]/50 border border-[#2a3d30] rounded-xl hover:border-[#4ade9a]/30 transition-all duration-300 hover:-translate-y-1 cursor-pointer">
                                     <div className="text-[#4ade9a] mb-4">{'★'.repeat(5)}</div>
                                     <p className="text-[#a8a8a0] mb-6 leading-relaxed">{`"${t.text}"`}</p>
                                     <p className="font-semibold">{t.name}</p>
@@ -1055,10 +1055,10 @@ export default function Home() {
                             const isOpen = openFaqs.includes(i);
                             return (
                                 <AnimateIn key={i} delay={i * 0.08}>
-                                    <div className={`border rounded-xl overflow-hidden transition-all duration-300 ${isOpen ? 'border-[#4ade9a]/50 bg-[#1a2a22]/20' : 'border-[#2a3d30] hover:border-[#4ade9a]/30'}`}>
+                                    <div className={`border rounded-xl overflow-hidden transition-all duration-300 cursor-pointer ${isOpen ? 'border-[#4ade9a]/50 bg-[#1a2a22]/20' : 'border-[#2a3d30] hover:border-[#4ade9a]/30'}`}>
                                         <button
                                             onClick={() => toggleFaq(i)}
-                                            className="w-full text-left px-6 py-4 flex items-center justify-between hover:bg-[#1a2a22]/50 transition"
+                                            className="w-full text-left px-6 py-4 flex items-center justify-between hover:bg-[#1a2a22]/50 transition cursor-pointer"
                                         >
                                             <span className={`font-semibold transition-colors duration-300 ${isOpen ? 'text-[#4ade9a]' : 'text-white'}`}>{faq.q}</span>
                                             <span className="text-[#4ade9a] text-xl transition-transform duration-300" style={{ transform: isOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>+</span>
@@ -1120,8 +1120,8 @@ export default function Home() {
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                            <button className="px-8 py-3.5 border border-[#2a3d30] hover:border-[#4ade9a] rounded-full font-semibold transition-all duration-300 hover:bg-[#4ade9a]/10">Try for free</button>
-                            <Link href="/login" className="px-8 py-3.5 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-full font-semibold transition-all duration-300 transform hover:scale-105 animate-btnPulse">Get Started</Link>
+                            <button className="px-8 py-3.5 border border-[#2a3d30] hover:border-[#4ade9a] rounded-full font-semibold transition-all duration-300 hover:bg-[#4ade9a]/10 cursor-pointer">Try for free</button>
+                            <Link href="/login" className="px-8 py-3.5 bg-[#4ade9a] hover:bg-[#22c55e] text-[#0d1a14] rounded-full font-semibold transition-all duration-300 transform hover:scale-105 animate-btnPulse cursor-pointer">Get Started</Link>
                         </div>
                     </div>
                 </AnimateIn>
