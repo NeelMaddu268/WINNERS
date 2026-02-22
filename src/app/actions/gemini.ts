@@ -135,6 +135,12 @@ export type PortfolioPulseResult = {
     overvaluation: number;
     growthPotential: number;
     politicalClimate: number;
+    /** 2 short bullets explaining valuation risk relative to positions (P/E, market cap) */
+    valuationRiskExplanation?: string[];
+    /** 2 short bullets explaining growth potential (industry, product, earnings) */
+    growthPotentialExplanation?: string[];
+    /** 2 short bullets: low = restrictions; high = subsidies, incentives, industrial policy */
+    politicalClimateExplanation?: string[];
 };
 
 export type AccountInsightItem = {
@@ -194,8 +200,14 @@ Generate a portfolio-level analysis based on the news context above and your kno
   "insight": "<2-4 short bullet points: sector clustering, concentration risks, shared tailwinds, cross-holding themes. No long paragraphs.>",
   "overvaluation": <0-100 score>,
   "growthPotential": <0-100 score>,
-  "politicalClimate": <0-100 score>
-}`;
+  "politicalClimate": <0-100 score>,
+  "valuationRiskExplanation": ["<bullet 1: P/E ratios, market cap relative to positions>", "<bullet 2>"],
+  "growthPotentialExplanation": ["<bullet 1: industry growth, product, position earnings>", "<bullet 2>"],
+  "politicalClimateExplanation": ["<bullet 1: low scores = government restrictions; high = subsidies/incentives/industrial policy>", "<bullet 2>"]
+}
+For valuationRiskExplanation: explain P/E ratios, market cap relative to the user's positions.
+For growthPotentialExplanation: explain industry growth, product positioning, and the position's earning numbers.
+For politicalClimateExplanation: for low scores show government restrictions; for high scores justify with relevant subsidies, incentives, and industrial policy.`;
         const text = await generateJson(GEMINIRULES, userPrompt);
         setCache(cacheKey, text, PULSE_CACHE_TTL_MS);
         return JSON.parse(text) as PortfolioPulseResult;
