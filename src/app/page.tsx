@@ -942,10 +942,7 @@ export default function Home() {
                 </AnimateIn>
             </section>
 
-            {/* Chat bubble */}
-            <div className="fixed bottom-8 right-8 w-16 h-16 bg-[#4ade9a] hover:bg-[#22c55e] rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 transform hover:scale-110 shadow-lg shadow-[#4ade9a]/20 z-40 animate-bounce">
-                <span className="text-2xl text-[#0d1a14]">💬</span>
-            </div>
+
 
             <style jsx global>{`
                 @keyframes floatSymbol {
