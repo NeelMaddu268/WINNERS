@@ -8,6 +8,7 @@ import { doc, getDoc, updateDoc, collection, addDoc } from "firebase/firestore";
 import { getTickerOverview, type TickerOverviewResult } from "@/app/actions/gemini";
 import { getQuote, getChartData, getPriceForDate, getKeyStatistics, type KeyStatistics } from "@/app/actions/market";
 import { recalculatePortfolioFromTransactions } from "@/app/actions/portfolio";
+import { motion, AnimatePresence } from "framer-motion";
 
 type TickerItem = { ticker: string; name: string; price: number; diff: string; isPositive: boolean };
 type Position = { ticker: string; name: string; shares: number; avgCost: number; costBasis: number; priceAtPurchase?: number };
@@ -510,15 +511,15 @@ export default function TickerPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
                 </Link>
-                <span className="font-bold text-[#f0ede8]">{tickerData.ticker}</span>
+                <span className="text-xl tracking-wider font-bold text-[#f0ede8]">{tickerData.ticker}</span>
                 <div className="w-10" />
             </div>
 
             <div className="px-4">
                 {/* Ticker Header */}
                 <div className="flex flex-col gap-1 mt-6">
-                    <h1 className="text-3xl font-bold tracking-tight text-[#f0ede8]">{tickerData.name}</h1>
-                    <div className="text-4xl font-bold mt-2 text-[#f0ede8]">${tickerData.price.toFixed(2)}</div>
+                    <h1 className="text-4xl font-bold tracking-tight text-[#f0ede8]">{tickerData.name}</h1>
+                    <div className="text-3xl font-bold mt-2 text-[#f0ede8] tracking-tight">${tickerData.price.toFixed(2)}</div>
                     <div className="flex items-center gap-2 mt-1">
                         <span className={`font-semibold text-sm ${tickerData.isPositive ? "text-[#4ade9a]" : "text-red-400"}`}>
                             {tickerData.isPositive ? "▲" : "▼"} {tickerData.diff}
@@ -559,19 +560,27 @@ export default function TickerPage() {
                             {[10, 20, 30, 40, 50, 60, 70, 80, 90].map((x) => (
                                 <line key={x} x1={x} y1="0" x2={x} y2="50" stroke="rgba(255,255,255,0.05)" strokeWidth="0.3" />
                             ))}
-                            <path
-                                d={`${historicalChartPath} L 100,50 L 0,50 Z`}
-                                fill={tickerData.isPositive ? "url(#tickerChartGradientGreen)" : "url(#tickerChartGradientRed)"}
-                                className="transition-all duration-700 ease-in-out"
-                            />
-                            <path
-                                d={historicalChartPath}
-                                fill="none"
-                                stroke={tickerData.isPositive ? "#00c805" : "#ff5000"}
-                                strokeWidth="1.5"
-                                vectorEffect="non-scaling-stroke"
-                                className="transition-all duration-700 ease-in-out"
-                            />
+                            <AnimatePresence mode="popLayout">
+                                <motion.g
+                                    key={activeTimeframe}
+                                    initial={{ opacity: 0, scale: 0.98 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 1.02 }}
+                                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                                >
+                                    <path
+                                        d={`${historicalChartPath} L 100,50 L 0,50 Z`}
+                                        fill={tickerData.isPositive ? "url(#tickerChartGradientGreen)" : "url(#tickerChartGradientRed)"}
+                                    />
+                                    <path
+                                        d={historicalChartPath}
+                                        fill="none"
+                                        stroke={tickerData.isPositive ? "#00c805" : "#ff5000"}
+                                        strokeWidth="1.5"
+                                        vectorEffect="non-scaling-stroke"
+                                    />
+                                </motion.g>
+                            </AnimatePresence>
                             {chartPosition && chartPosition.shares > 0 && chartDisplayBounds && (
                                 <>
                                     <line
@@ -614,7 +623,7 @@ export default function TickerPage() {
                         <button
                             key={tf}
                             onClick={() => setActiveTimeframe(tf)}
-                            className={`text-xs font-bold transition-all duration-200 ${activeTimeframe === tf ? "bg-zinc-800 text-white px-3 py-1.5 rounded-full" : "text-zinc-400 hover:text-white px-3 py-1.5"
+                            className={`text-sm font-bold transition-all duration-200 ${activeTimeframe === tf ? "bg-zinc-800 text-white px-3.5 py-2 rounded-full" : "text-zinc-400 hover:text-white px-3.5 py-2"
                                 }`}
                         >
                             {tf}
@@ -635,7 +644,7 @@ export default function TickerPage() {
                             setRecentTradeDetails(null);
                             setIsTradeModalOpen(true);
                         }}
-                        className={`w-full py-4 rounded-full font-bold text-lg transition shadow-lg ${tickerData.isPositive
+                        className={`w-full py-3.5 rounded-full font-bold text-lg transition shadow-lg ${tickerData.isPositive
                             ? "bg-[#00c805] hover:bg-[#00e306] text-black shadow-[#00c805]/20"
                             : "bg-[#ff5000] hover:bg-[#ff6a26] text-white shadow-[#ff5000]/20"
                             }`}
@@ -645,84 +654,90 @@ export default function TickerPage() {
                 </div>
 
                 {/* AI Rundown */}
-                <div className="mt-12 mb-8">
-                    <div className="bg-gradient-to-br from-[#1a1025] to-[#110c18] border border-purple-500/30 rounded-3xl p-6 shadow-xl relative overflow-hidden min-h-[250px]">
-                        <h2 className="text-2xl font-serif font-bold text-purple-100 mb-6 flex items-center gap-2">
-                            <span className="text-purple-400">✨</span> AI Overview
+                <div className="mt-14 mb-10">
+                    <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-8 shadow-2xl relative overflow-hidden min-h-[250px]">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-[#4ade9a]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
+                        <h2 className="text-2xl lg:text-3xl font-serif font-bold text-[#f0ede8] mb-8 flex items-center gap-3" style={{ fontFamily: 'Playfair Display, serif' }}>
+                            <span className="text-[#4ade9a]">✨</span> AI Overview
                         </h2>
                         {(isOverviewLoading) ? (
-                            <div className="flex flex-col items-center justify-center py-8 opacity-70">
-                                <div className="w-8 h-8 rounded-full border-t-2 border-r-2 border-purple-500 animate-spin mb-4" />
-                                <p className="text-purple-300 text-sm animate-pulse">Analyzing web signals & sentiment...</p>
+                            <div className="flex flex-col items-center justify-center py-12 opacity-80">
+                                <div className="w-8 h-8 rounded-full border-t-2 border-r-2 border-[#4ade9a] animate-spin mb-4" />
+                                <p className="text-[#a8a8a0] text-base animate-pulse font-medium">Analyzing web signals & sentiment...</p>
                             </div>
                         ) : tickerOverview ? (
-                            <div className="flex flex-col gap-6 animate-in fade-in duration-500">
-                                <div className="space-y-4">
-                                    <div>
-                                        <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">Price Behavior</h3>
-                                        <p className="text-sm text-zinc-200 leading-relaxed">{tickerOverview.priceBehavior}</p>
+                            <div className="flex flex-col gap-8 animate-in fade-in duration-500 relative z-10">
+                                <div className="space-y-8">
+                                    <div className="border-l-2 border-[#4ade9a]/30 pl-4">
+                                        <h3 className="text-sm font-bold text-[#4ade9a] uppercase tracking-widest mb-2">Price Behavior</h3>
+                                        <p className="text-base md:text-lg text-[#a8a8a0] leading-relaxed max-w-4xl">{tickerOverview.priceBehavior}</p>
                                     </div>
-                                    <div>
-                                        <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">Recent News & Fundamentals</h3>
-                                        <p className="text-sm text-zinc-200 leading-relaxed">{tickerOverview.recentNewsAndFundamentals}</p>
+                                    <div className="border-l-2 border-[#4ade9a]/30 pl-4">
+                                        <h3 className="text-sm font-bold text-[#4ade9a] uppercase tracking-widest mb-2">Recent News & Fundamentals</h3>
+                                        <p className="text-base md:text-lg text-[#a8a8a0] leading-relaxed max-w-4xl">{tickerOverview.recentNewsAndFundamentals}</p>
                                     </div>
-                                    <div>
-                                        <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">Fundamental Context</h3>
-                                        <p className="text-sm text-zinc-200 leading-relaxed">{tickerOverview.fundamentalContext}</p>
+                                    <div className="border-l-2 border-[#4ade9a]/30 pl-4">
+                                        <h3 className="text-sm font-bold text-[#4ade9a] uppercase tracking-widest mb-2">Fundamental Context</h3>
+                                        <p className="text-base md:text-lg text-[#a8a8a0] leading-relaxed max-w-4xl">{tickerOverview.fundamentalContext}</p>
                                     </div>
                                     {tickerOverview.risks?.length > 0 && (
-                                        <div>
-                                            <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">Key Risks</h3>
-                                            <ul className="space-y-1 text-sm text-zinc-200">
+                                        <div className="border-l-2 border-red-500/30 pl-4">
+                                            <h3 className="text-sm font-bold text-red-400 uppercase tracking-widest mb-2">Key Risks</h3>
+                                            <ul className="space-y-2 text-base md:text-lg text-[#a8a8a0] max-w-4xl">
                                                 {tickerOverview.risks.map((r, i) => (
-                                                    <li key={i}>• {r}</li>
+                                                    <li key={i} className="flex items-start gap-2">
+                                                        <span className="text-red-400/60 mt-0.5">•</span>
+                                                        <span>{r}</span>
+                                                    </li>
                                                 ))}
                                             </ul>
                                         </div>
                                     )}
-                                    <div>
-                                        <h3 className="text-sm font-bold text-purple-300 uppercase tracking-wider mb-2">Outlook</h3>
-                                        <p className="text-sm text-zinc-200 leading-relaxed">{tickerOverview.outlook}</p>
+                                    <div className="mt-8 pt-8 border-t border-[#2a3d30]/30">
+                                        <p className="text-base md:text-lg text-[#f0ede8] leading-relaxed max-w-4xl">
+                                            <span className="text-[#4ade9a] font-bold uppercase tracking-widest text-sm block mb-2">Outlook</span>
+                                            {tickerOverview.outlook}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
                         ) : (
-                            <div className="text-center py-8 text-zinc-500 text-sm">Add GEMINI_API_KEY to .env.local to enable AI analysis.</div>
+                            <div className="text-center py-8 text-[#a8a8a0] text-sm">Add GEMINI_API_KEY to .env.local to enable AI analysis.</div>
                         )}
                     </div>
                 </div>
 
                 {/* Key Statistics */}
-                <div className="mt-8">
-                    <h2 className="text-xl font-bold mb-4 text-zinc-400">Key Statistics</h2>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-6 text-sm bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+                <div className="mt-8 mb-8">
+                    <h2 className="text-xl font-serif font-bold mb-5 text-[#f0ede8]" style={{ fontFamily: 'Playfair Display, serif' }}>Key Statistics</h2>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-6 gap-x-6 bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-6 shadow-lg">
                         <div>
-                            <span className="text-zinc-500 block mb-0.5">Open</span>
-                            <span className="font-medium">{chartStats.open}</span>
+                            <span className="text-[#a8a8a0] text-xs uppercase tracking-wider font-bold block mb-0.5">Open</span>
+                            <span className="text-base font-medium text-[#f0ede8]">{chartStats.open}</span>
                         </div>
                         <div>
-                            <span className="text-zinc-500 block mb-0.5">High</span>
-                            <span className="font-medium">{chartStats.high}</span>
+                            <span className="text-[#a8a8a0] text-xs uppercase tracking-wider font-bold block mb-0.5">High</span>
+                            <span className="text-base font-medium text-[#f0ede8]">{chartStats.high}</span>
                         </div>
                         <div>
-                            <span className="text-zinc-500 block mb-0.5">Vol (Daily)</span>
-                            <span className="font-medium">{chartStats.vol}</span>
+                            <span className="text-[#a8a8a0] text-xs uppercase tracking-wider font-bold block mb-0.5">Vol (Daily)</span>
+                            <span className="text-base font-medium text-[#f0ede8]">{chartStats.vol}</span>
                         </div>
                         <div>
-                            <span className="text-zinc-500 block mb-0.5">{activeTimeframe} Range</span>
-                            <span className="font-medium">{chartStats.range}</span>
+                            <span className="text-[#a8a8a0] text-xs uppercase tracking-wider font-bold block mb-0.5">{activeTimeframe} Range</span>
+                            <span className="text-base font-medium text-[#f0ede8]">{chartStats.range}</span>
                         </div>
                         <div>
-                            <span className="text-zinc-500 block mb-0.5">P/E (TTM)</span>
-                            <span className="font-medium">{keyStats?.trailingPE != null ? keyStats.trailingPE.toFixed(2) : "—"}</span>
+                            <span className="text-[#a8a8a0] text-xs uppercase tracking-wider font-bold block mb-0.5">P/E (TTM)</span>
+                            <span className="text-base font-medium text-[#f0ede8]">{keyStats?.trailingPE != null ? keyStats.trailingPE.toFixed(2) : "—"}</span>
                         </div>
                         <div>
-                            <span className="text-zinc-500 block mb-0.5">Forward P/E</span>
-                            <span className="font-medium">{keyStats?.forwardPE != null ? keyStats.forwardPE.toFixed(2) : "—"}</span>
+                            <span className="text-[#a8a8a0] text-xs uppercase tracking-wider font-bold block mb-0.5">Forward P/E</span>
+                            <span className="text-base font-medium text-[#f0ede8]">{keyStats?.forwardPE != null ? keyStats.forwardPE.toFixed(2) : "—"}</span>
                         </div>
                         <div>
-                            <span className="text-zinc-500 block mb-0.5">Market Cap</span>
-                            <span className="font-medium">
+                            <span className="text-[#a8a8a0] text-xs uppercase tracking-wider font-bold block mb-0.5">Market Cap</span>
+                            <span className="text-base font-medium text-[#f0ede8]">
                                 {keyStats?.marketCap != null
                                     ? keyStats.marketCap >= 1e12
                                         ? `$${(keyStats.marketCap / 1e12).toFixed(2)}T`
@@ -735,16 +750,16 @@ export default function TickerPage() {
                             </span>
                         </div>
                         <div>
-                            <span className="text-zinc-500 block mb-0.5">52W High</span>
-                            <span className="font-medium">{keyStats?.fiftyTwoWeekHigh != null ? `$${keyStats.fiftyTwoWeekHigh.toFixed(2)}` : "—"}</span>
+                            <span className="text-[#a8a8a0] text-xs uppercase tracking-wider font-bold block mb-0.5">52W High</span>
+                            <span className="text-base font-medium text-[#f0ede8]">{keyStats?.fiftyTwoWeekHigh != null ? `$${keyStats.fiftyTwoWeekHigh.toFixed(2)}` : "—"}</span>
                         </div>
                         <div>
-                            <span className="text-zinc-500 block mb-0.5">52W Low</span>
-                            <span className="font-medium">{keyStats?.fiftyTwoWeekLow != null ? `$${keyStats.fiftyTwoWeekLow.toFixed(2)}` : "—"}</span>
+                            <span className="text-[#a8a8a0] text-xs uppercase tracking-wider font-bold block mb-0.5">52W Low</span>
+                            <span className="text-base font-medium text-[#f0ede8]">{keyStats?.fiftyTwoWeekLow != null ? `$${keyStats.fiftyTwoWeekLow.toFixed(2)}` : "—"}</span>
                         </div>
                         <div>
-                            <span className="text-zinc-500 block mb-0.5">Avg Volume</span>
-                            <span className="font-medium">
+                            <span className="text-[#a8a8a0] text-xs uppercase tracking-wider font-bold block mb-0.5">Avg Volume</span>
+                            <span className="text-base font-medium text-[#f0ede8]">
                                 {keyStats?.averageVolume != null ? `${(keyStats.averageVolume / 1e6).toFixed(2)}M` : "—"}
                             </span>
                         </div>

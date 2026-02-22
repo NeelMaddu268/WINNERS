@@ -292,14 +292,6 @@ export default function PortfolioPage() {
                 setAiLoading((prev) => ({ ...prev, pulse: false }));
             });
         }
-        getAccountInsights(
-            timeframe,
-            mergedPositions.map((p) => ({ ticker: p.ticker, name: p.name, shares: p.shares })),
-            transactionsWithPrices.map((t) => ({ ticker: t.ticker, type: t.type, shares: t.shares, timestamp: t.timestamp }))
-        ).then((r) => {
-            setAccountInsights(r ?? null);
-            setAiLoading((prev) => ({ ...prev, insights: false }));
-        });
         getLookout(timeframe, mergedPositions.map((p) => ({ ticker: p.ticker, name: p.name })), []).then((r) => {
             setLookout(r ?? null);
             setAiLoading((prev) => ({ ...prev, lookout: false }));
@@ -315,7 +307,31 @@ export default function PortfolioPage() {
                 });
             }
         });
-    }, [timeframe, mergedPositions, transactionsWithPrices, loading, portfolioRecalculating]);
+    }, [timeframe, mergedPositions, loading, portfolioRecalculating]);
+
+    // Separate useEffect for Account Insights to ensure it has the latest live prices
+    useEffect(() => {
+        if (loading || portfolioRecalculating || portfolioRecalculatingRef.current) return;
+
+        // Wait until we have live prices for at least one position (if the user has positions)
+        if (mergedPositions.length > 0 && Object.keys(livePrices).length === 0) return;
+
+        setAiLoading((prev) => ({ ...prev, insights: true }));
+        getAccountInsights(
+            timeframe,
+            mergedPositions.map((p) => {
+                const currentPrice = livePrices[p.ticker] ?? p.avgCost;
+                const marketValue = currentPrice * p.shares;
+                const unrealizedPnL = marketValue - p.costBasis;
+                const unrealizedPercent = p.costBasis > 0 ? (unrealizedPnL / p.costBasis) * 100 : 0;
+                return { ticker: p.ticker, name: p.name, shares: p.shares, unrealizedPercent };
+            }),
+            transactionsWithPrices.map((t) => ({ ticker: t.ticker, type: t.type, shares: t.shares, timestamp: t.timestamp }))
+        ).then((r) => {
+            setAccountInsights(r ?? null);
+            setAiLoading((prev) => ({ ...prev, insights: false }));
+        });
+    }, [timeframe, mergedPositions, transactionsWithPrices, livePrices, loading, portfolioRecalculating]);
 
     useEffect(() => {
         if (loading || mergedPositions.length === 0) {
@@ -537,15 +553,15 @@ export default function PortfolioPage() {
                                     </div>
                                 ) : (
                                     <div className="overflow-x-auto">
-                                        <table className="w-full text-left min-w-[700px]">
+                                        <table className="w-[calc(100%-1px)] text-left min-w-[650px]">
                                             <thead>
                                                 <tr className="border-b border-[#2a3d30]/50 text-[#a8a8a0] text-sm uppercase tracking-wider">
-                                                    <th className="pb-4 font-bold pr-8 min-w-[140px]">Ticker</th>
-                                                    <th className="pb-4 font-bold text-right pr-8 min-w-[100px]">Shares</th>
-                                                    <th className="pb-4 font-bold text-right pr-8 min-w-[100px]">Avg Cost</th>
-                                                    <th className="pb-4 font-bold text-right pr-8 min-w-[110px]">Current Price</th>
-                                                    <th className="pb-4 font-bold text-right pr-8 min-w-[120px]">Market Value</th>
-                                                    <th className="pb-4 font-bold text-right min-w-[140px]">Unrealized P&L</th>
+                                                    <th className="pb-4 font-bold pr-4">Ticker</th>
+                                                    <th className="pb-4 font-bold text-right pr-4">Shares</th>
+                                                    <th className="pb-4 font-bold text-right pr-4">Avg Cost</th>
+                                                    <th className="pb-4 font-bold text-right pr-4">Current Price</th>
+                                                    <th className="pb-4 font-bold text-right pr-4">Market Value</th>
+                                                    <th className="pb-4 font-bold text-right">Unrealized P&L</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -562,16 +578,19 @@ export default function PortfolioPage() {
                                                             onClick={() => router.push(`/markets/${item.ticker}`)}
                                                             className="border-b border-[#2a3d30]/30 hover:bg-[#1a2a22]/50 cursor-pointer transition-colors"
                                                         >
-                                                            <td className="py-4 pr-8">
+                                                            <td className="py-4 pr-4">
                                                                 <div className="font-bold">{item.ticker}</div>
                                                                 <div className="text-sm text-[#a8a8a0]">{item.name}</div>
                                                             </td>
-                                                            <td className="py-4 text-right font-medium pr-8">{item.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
-                                                            <td className="py-4 text-right font-medium pr-8">${item.avgCost.toFixed(2)}</td>
-                                                            <td className="py-4 text-right font-medium pr-8">${currentPrice.toFixed(2)}</td>
-                                                            <td className="py-4 text-right font-bold pr-8">${marketValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                                            <td className="py-4 text-right font-medium pr-4">{item.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
+                                                            <td className="py-4 text-right font-medium pr-4">${item.avgCost.toFixed(2)}</td>
+                                                            <td className="py-4 text-right font-medium pr-4">${currentPrice.toFixed(2)}</td>
+                                                            <td className="py-4 text-right font-bold pr-4">${marketValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                                             <td className={isPositive ? "py-4 text-right font-bold text-[#4ade9a]" : "py-4 text-right font-bold text-red-400"}>
-                                                                {isPositive ? "+" : ""}{unrealizedPnL.toFixed(2)} ({isPositive ? "+" : ""}{unrealizedPercent.toFixed(2)}%)
+                                                                <div className="flex flex-col items-end">
+                                                                    <span>{isPositive ? "+" : ""}{unrealizedPnL.toFixed(2)}</span>
+                                                                    <span className="text-xs">({isPositive ? "+" : ""}{unrealizedPercent.toFixed(2)}%)</span>
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                     );
@@ -626,7 +645,7 @@ export default function PortfolioPage() {
                     {/* Account Insights */}
                     <div className="lg:col-span-2 bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-[#4ade9a]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
-                        <h3 className="text-lg text-[#a8a8a0] font-medium mb-4">Account Insights</h3>
+                        <h3 className="text-xl lg:text-2xl font-serif font-bold text-[#f0ede8] mb-6" style={{ fontFamily: 'Playfair Display, serif' }}>Position Analysis</h3>
                         {aiLoading.insights ? (
                             <div className="py-4 flex items-center text-[#a8a8a0]">
                                 <div className="w-6 h-6 border-2 border-[#4ade9a]/30 border-t-[#4ade9a] rounded-full animate-spin" />
@@ -636,23 +655,33 @@ export default function PortfolioPage() {
                             <div className="space-y-4 text-base leading-relaxed relative z-10">
                                 {accountInsights.items.length > 0 ? (
                                     accountInsights.items.map((item, i) => (
-                                        <div key={i} className="flex gap-3 items-start">
-                                            <span className="text-[#4ade9a] text-lg leading-none mt-0.5">&mdash;</span>
-                                            <div>
-                                                <p><span className="text-white font-bold">{item.ticker}</span> ({item.name}): {item.movement}</p>
-                                                <ul className="text-[#a8a8a0] text-sm mt-0.5 list-disc list-inside space-y-0.5">
+                                        <div key={i} className="flex gap-4 items-start pb-4 border-b border-[#2a3d30]/30 last:border-0 last:pb-0">
+                                            <span className="text-[#4ade9a] text-xl leading-none mt-1">&mdash;</span>
+                                            <div className="flex-1">
+                                                <div className="mb-2 flex items-center">
+                                                    <span className="font-bold text-white tracking-wide bg-[#1a2a22] px-2.5 py-1 rounded-lg border border-[#2a3d30] shadow-sm">{item.ticker}</span>
+                                                    <span className="text-[#a8a8a0] ml-3 text-sm font-medium">{item.name}</span>
+                                                </div>
+                                                <p className="text-base md:text-lg text-[#a8a8a0] leading-relaxed mb-3 max-w-3xl">{item.movement}</p>
+                                                <div className="space-y-2 mb-3">
                                                     {(Array.isArray(item.drivers) ? item.drivers : [item.drivers]).map((d, j) => (
-                                                        <li key={j}>{d}</li>
+                                                        <div key={j} className="flex gap-2.5 text-base md:text-lg text-[#a8a8a0] leading-relaxed max-w-3xl">
+                                                            <span className="text-[#4ade9a] opacity-60 mt-0.5" style={{ fontSize: '1.2em' }}>•</span>
+                                                            <span>{d}</span>
+                                                        </div>
                                                     ))}
-                                                </ul>
-                                                <p className="text-[#a8a8a0] text-sm mt-0.5">{item.interpretation}</p>
+                                                </div>
+                                                <p className="inline-block text-[#4ade9a] text-sm font-medium italic bg-[#4ade9a]/10 px-3 py-1.5 rounded-lg border border-[#4ade9a]/20">{item.interpretation}</p>
                                             </div>
                                         </div>
                                     ))
                                 ) : (
                                     <p className="text-[#a8a8a0] text-sm">No significant position movements in this timeframe.</p>
                                 )}
-                                <p className="text-white font-medium mt-3 text-sm">{accountInsights.portfolioObservation}</p>
+                                <p className="text-base md:text-lg text-[#a8a8a0] leading-relaxed mt-6 pt-6 border-t border-[#2a3d30]/30 max-w-3xl">
+                                    <span className="text-white font-serif italic pr-2" style={{ fontFamily: 'Playfair Display, serif' }}>Bottom Line:</span>
+                                    {accountInsights.portfolioObservation}
+                                </p>
                             </div>
                         ) : (
                             <p className="text-[#a8a8a0] text-sm">Enable AI to see account insights.</p>
@@ -670,7 +699,7 @@ export default function PortfolioPage() {
                             const dashOffset = circumference - (pct / 100) * circumference;
                             return (
                                 <div className="bg-[#111c18] border border-[#2a3d30]/50 rounded-3xl p-8 shadow-xl flex flex-col items-center justify-center">
-                                    <h3 className="text-lg font-medium text-[#a8a8a0] mb-6 text-center font-serif" style={{ fontFamily: 'Playfair Display, serif' }}>Profitable Positions</h3>
+                                    <h3 className="text-xl lg:text-2xl font-serif font-bold text-[#f0ede8] mb-6 text-center" style={{ fontFamily: 'Playfair Display, serif' }}>Profitable Positions</h3>
                                     <div className="relative w-32 h-32 flex items-center justify-center">
                                         <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
                                             <circle cx="50" cy="50" r="42" stroke="#1a2a22" strokeWidth="6" fill="none" />
@@ -728,22 +757,22 @@ export default function PortfolioPage() {
                                 <span className="ml-3 text-sm">Scanning for signals...</span>
                             </div>
                         ) : lookout?.items && lookout.items.length > 0 ? (
-                            <ul className="space-y-5 text-base">
+                            <ul className="space-y-4 text-base">
                                 {lookout.items.map((item, i) => (
-                                    <li key={i} className="flex gap-4 items-start">
+                                    <li key={i} className="flex gap-4 items-start pb-4 border-b border-[#2a3d30]/30 last:border-0 last:pb-0">
                                         <span className="text-[#a8a8a0] text-xl leading-none mt-1">&mdash;</span>
                                         <div className="flex-1">
-                                            <p className="leading-relaxed">
+                                            <p className="text-base md:text-lg text-[#a8a8a0] leading-relaxed max-w-3xl">
                                                 {item.ticker ? (
-                                                    <Link href={`/markets/${item.ticker}`} className="text-white font-medium hover:text-[#4ade9a] transition underline">
+                                                    <Link href={`/markets/${item.ticker}`} className="text-[#4ade9a] font-medium hover:underline transition">
                                                         {item.name} ({item.ticker})
                                                     </Link>
                                                 ) : (
-                                                    <span className="text-white font-medium">{item.name}</span>
+                                                    <span className="text-[#4ade9a] font-medium">{item.name}</span>
                                                 )}
                                                 {" "}{item.item}
                                             </p>
-                                            <p className="text-[#a8a8a0] text-sm mt-1">{item.whyItMatters}</p>
+                                            <p className="text-base md:text-lg text-[#a8a8a0] leading-relaxed max-w-3xl mt-1">{item.whyItMatters}</p>
                                             {item.ticker && lookoutHypeScores[item.ticker] && (
                                                 <div className="mt-2 flex items-center gap-2">
                                                     <div className="flex flex-col items-center gap-0.5 bg-[#1a2a22] border border-[#2a3d30] px-3 py-2 rounded-xl">

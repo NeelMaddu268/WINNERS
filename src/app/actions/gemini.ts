@@ -218,12 +218,12 @@ For politicalClimateExplanation: for low scores show government restrictions; fo
 
 export async function getAccountInsights(
     timeframe: string,
-    holdings: { ticker: string; name: string; shares: number }[],
+    holdings: { ticker: string; name: string; shares: number; unrealizedPercent?: number }[],
     transactions: { ticker: string; type: string; shares: number; timestamp: string }[]
 ): Promise<AccountInsightsResult | null> {
     if (!genAI) return null;
     const txSlice = transactions.slice(-20).map((t) => `${t.ticker}:${t.type}:${t.shares}:${t.timestamp}`);
-    const cacheKey = `insights:${timeframe}:${holdings.map((h) => h.ticker).sort().join(",")}:${txSlice.join("|")}`;
+    const cacheKey = `insights:${timeframe}:${holdings.map((h) => `${h.ticker}:${h.unrealizedPercent ? h.unrealizedPercent.toFixed(1) : ''}`).sort().join(",")}:${txSlice.join("|")}`;
     const cached = getCached(cacheKey);
     if (cached) return JSON.parse(cached) as AccountInsightsResult;
     try {
@@ -233,13 +233,13 @@ export async function getAccountInsights(
         const userPrompt = `You are operating in Account Insights mode. Follow the rules in GEMINIRULES.MD strictly.
 
 Timeframe: ${timeframe}
-Holdings: ${JSON.stringify(holdings)}
+Holdings (including real-time exact Profit/Loss %): ${JSON.stringify(holdings)}
 Recent transactions: ${JSON.stringify(transactions.slice(-20))}
 ${newsContext}
 
-Explain movements in the user's positions using the news context above. Output JSON:
+Explain movements in the user's positions using the exact profit/loss % data and news context above. IMPORTANT: When citing if a stock is up or down, ONLY use the exact 'unrealizedPercent' provided in the Holdings data. Do not hallucinate price movements. Output JSON:
 {
-  "items": [{"ticker": "...", "name": "...", "movement": "...", "drivers": ["<bullet 1>", "<bullet 2>", ...], "interpretation": "..."}],
+  "items": [{"ticker": "...", "name": "...", "movement": "<Describe the exact profit/loss using the provided metrics>", "drivers": ["<bullet 1>", "<bullet 2>", ...], "interpretation": "..."}],
   "portfolioObservation": "<summary of what positions collectively indicate>",
   "watchItems": ["<string>", ...]
 }
