@@ -318,6 +318,37 @@ export async function getEconomicCalendar(): Promise<{ time: string; event: stri
     ];
 }
 
+export type FinnhubNewsItem = { headline: string; source: string; datetime: number; url?: string; summary?: string };
+
+/** Fetch top market news from Finnhub (general category). */
+export async function getFinnhubMarketNews(): Promise<FinnhubNewsItem[]> {
+    const key = process.env.FINNHUB_API_KEY;
+    if (!key) return [];
+    try {
+        const cacheKey = "finnhub_market_news";
+        if (cache[cacheKey] && cache[cacheKey].expires > Date.now()) {
+            return cache[cacheKey].data;
+        }
+        const res = await fetch(
+            `https://finnhub.io/api/v1/news?category=general&token=${key}`,
+            { next: { revalidate: 300 } }
+        );
+        if (!res.ok) return [];
+        const data = (await res.json()) as { headline?: string; source?: string; datetime?: number; url?: string; summary?: string }[];
+        const items = (Array.isArray(data) ? data : []).slice(0, 8).map((n) => ({
+            headline: n.headline || "No headline",
+            source: n.source || "News",
+            datetime: n.datetime ?? 0,
+            url: n.url,
+            summary: n.summary,
+        }));
+        cache[cacheKey] = { data: items, expires: Date.now() + CACHE_TTL_MS };
+        return items;
+    } catch {
+        return [];
+    }
+}
+
 export async function getFearGreedIndex(): Promise<{ score: number; rating: string } | null> {
     try {
         const cacheKey = "fear_greed";

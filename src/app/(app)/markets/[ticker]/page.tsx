@@ -49,6 +49,8 @@ export default function TickerPage() {
     const [recentTradeDetails, setRecentTradeDetails] = useState<any>(null);
     const [selectedAudience, setSelectedAudience] = useState<"public" | "friends">("public");
     const [tradeResultDetails, setTradeResultDetails] = useState<any>(null);
+    const [showSharePreview, setShowSharePreview] = useState(false);
+    const [shareComment, setShareComment] = useState("");
 
     useEffect(() => {
         if (!tickerSymbol) return;
@@ -394,6 +396,8 @@ export default function TickerPage() {
         setRecentTradeShareState("none");
         setTradeResultDetails(null);
         setUserPosition(null);
+        setShowSharePreview(false);
+        setShareComment("");
         router.push("/portfolio");
     };
 
@@ -424,11 +428,14 @@ export default function TickerPage() {
                 audience: selectedAudience,
                 action: actionText,
                 ticker: recentTradeDetails.ticker,
+                message: shareComment.trim() || undefined,
                 timestamp: new Date().toISOString(),
                 likes: [],
                 commentsList: [],
                 isPositive: recentTradeDetails.tradeMode === "buy"
             });
+            setShowSharePreview(false);
+            setShareComment("");
             setTimeout(() => {
                 closeTradeModalAndRedirect();
             }, 1000);
@@ -824,85 +831,129 @@ export default function TickerPage() {
                             </button>
                         </div>
                         {tradeSuccess ? (
-                            <div className="py-8 flex flex-col items-center justify-center text-center">
-                                <div className="w-16 h-16 bg-[#00c805]/20 text-[#00c805] rounded-full flex items-center justify-center mb-4 border-2 border-[#00c805]">
-                                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                </div>
-                                <h4 className="text-2xl font-bold mb-2">Order Complete</h4>
-                                <p className="text-zinc-400 text-sm mb-6">Your {tickerData.ticker} {tradeMode === "buy" ? "purchase" : "sale"} has been executed.</p>
-
-                                {tradeResultDetails && (
-                                    <div className="w-full bg-zinc-800/50 rounded-2xl p-4 mb-6 text-left border border-zinc-700/50">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-zinc-400 text-sm">Execution Price</span>
-                                            <span className="font-bold text-white">${tradeResultDetails.execPrice.toFixed(2)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-zinc-400 text-sm">Shares {tradeResultDetails.isSell ? "Sold" : "Bought"}</span>
-                                            <span className="font-bold text-white">{tradeResultDetails.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-zinc-400 text-sm">Total Value</span>
-                                            <span className="font-bold text-white">${tradeResultDetails.total.toFixed(2)}</span>
-                                        </div>
-                                        {tradeResultDetails.isSell && (
-                                            <div className="flex justify-between items-center mt-3 pt-3 border-t border-zinc-700/50">
-                                                <span className="text-zinc-400 text-sm">Realized P&L</span>
-                                                <span className={`font-bold ${tradeResultDetails.profitAmount >= 0 ? "text-[#00c805]" : "text-red-500"}`}>
-                                                    {tradeResultDetails.profitAmount >= 0 ? "+" : ""}${tradeResultDetails.profitAmount.toFixed(2)}
-                                                    {" "}
-                                                    ({tradeResultDetails.profitAmount >= 0 ? "+" : ""}{tradeResultDetails.profitPercent.toFixed(2)}%)
+                            showSharePreview ? (
+                                <div className="py-8 flex flex-col">
+                                    <h4 className="text-xl font-bold mb-4">Share to Feed</h4>
+                                    <div className="w-full bg-zinc-800/50 rounded-2xl p-4 mb-4 text-left border border-zinc-700/50">
+                                        <p className="text-zinc-300 text-sm">
+                                            {recentTradeDetails?.tradeMode === "buy"
+                                                ? `purchased ${recentTradeDetails?.shares?.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares of`
+                                                : `sold ${recentTradeDetails?.shares?.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares of`}{" "}
+                                            <span className={`font-bold px-2 py-0.5 rounded-md ${recentTradeDetails?.tradeMode === "buy" ? "bg-[#00c805]/10 text-[#00c805]" : "bg-white/10 text-white"}`}>
+                                                {recentTradeDetails?.ticker}
+                                            </span>
+                                            {recentTradeDetails?.tradeMode === "sell" && (
+                                                <span className={`block mt-2 font-bold ${(recentTradeDetails?.profitAmount ?? 0) >= 0 ? "text-[#00c805]" : "text-red-500"}`}>
+                                                    {(recentTradeDetails?.profitAmount ?? 0) >= 0 ? "+" : ""}{(recentTradeDetails?.profitPercent ?? 0).toFixed(2)}%
                                                 </span>
-                                            </div>
+                                            )}
+                                        </p>
+                                        {shareComment.trim() && (
+                                            <p className="text-[#a8a8a0] mt-2 pt-2 border-t border-zinc-700/50 text-sm">{shareComment}</p>
                                         )}
                                     </div>
-                                )}
-
-                                {recentTradeShareState === "auto-shared" && (
-                                    <div className="text-sm text-[#00c805] font-bold flex items-center gap-2 bg-[#00c805]/10 px-4 py-2 rounded-full mt-2 animate-in slide-in-from-bottom-2">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                                        Automatically shared to feed
+                                    <textarea
+                                        placeholder="Add a comment (optional)"
+                                        value={shareComment}
+                                        onChange={(e) => setShareComment(e.target.value)}
+                                        className="w-full bg-zinc-800 text-white border border-zinc-700 rounded-xl p-4 mb-4 text-sm resize-none focus:outline-none focus:border-[#00c805] transition placeholder:text-zinc-500"
+                                        rows={3}
+                                    />
+                                    <div className="flex items-center justify-between mb-4 text-sm text-zinc-400">
+                                        <span>Share with:</span>
+                                        <select
+                                            value={selectedAudience}
+                                            onChange={(e) => setSelectedAudience(e.target.value as "public" | "friends")}
+                                            className="bg-zinc-800 text-white border border-zinc-700 rounded-lg px-3 py-2 outline-none cursor-pointer"
+                                        >
+                                            <option value="public">Public</option>
+                                            <option value="friends">Friends Only</option>
+                                        </select>
                                     </div>
-                                )}
-
-                                {recentTradeShareState === "shared" && (
-                                    <div className="text-sm text-[#00c805] font-bold flex items-center gap-2 bg-[#00c805]/10 px-4 py-2 rounded-full mt-2 animate-in slide-in-from-bottom-2">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                                        Shared to feed!
+                                    <button
+                                        onClick={handleShareRecentTrade}
+                                        className="w-full py-3 bg-[#00c805] hover:bg-[#00e306] text-black rounded-xl font-bold transition flex items-center justify-center gap-2"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                                        Post to Feed
+                                    </button>
+                                    <button
+                                        onClick={() => setShowSharePreview(false)}
+                                        className="w-full py-3 text-zinc-400 hover:text-white bg-zinc-800 rounded-xl font-bold transition mt-2"
+                                    >
+                                        Back
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="py-8 flex flex-col items-center justify-center text-center">
+                                    <div className="w-16 h-16 bg-[#00c805]/20 text-[#00c805] rounded-full flex items-center justify-center mb-4 border-2 border-[#00c805]">
+                                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                        </svg>
                                     </div>
-                                )}
+                                    <h4 className="text-2xl font-bold mb-2">Order Complete</h4>
+                                    <p className="text-zinc-400 text-sm mb-6">Your {tickerData.ticker} {tradeMode === "buy" ? "purchase" : "sale"} has been executed.</p>
 
-                                {recentTradeShareState === "pending" && (
-                                    <div className="flex flex-col w-full gap-3 mt-4">
-                                        <div className="flex items-center justify-between px-2 text-sm text-zinc-400">
-                                            <span>Share with:</span>
-                                            <select
-                                                value={selectedAudience}
-                                                onChange={(e) => setSelectedAudience(e.target.value as "public" | "friends")}
-                                                className="bg-zinc-800 text-white border-none rounded-lg px-2 py-1 outline-none cursor-pointer"
-                                            >
-                                                <option value="public">Public</option>
-                                                <option value="friends">Friends Only</option>
-                                            </select>
+                                    {tradeResultDetails && (
+                                        <div className="w-full bg-zinc-800/50 rounded-2xl p-4 mb-6 text-left border border-zinc-700/50">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-zinc-400 text-sm">Execution Price</span>
+                                                <span className="font-bold text-white">${tradeResultDetails.execPrice.toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-zinc-400 text-sm">Shares {tradeResultDetails.isSell ? "Sold" : "Bought"}</span>
+                                                <span className="font-bold text-white">{tradeResultDetails.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-zinc-400 text-sm">Total Value</span>
+                                                <span className="font-bold text-white">${tradeResultDetails.total.toFixed(2)}</span>
+                                            </div>
+                                            {tradeResultDetails.isSell && (
+                                                <div className="flex justify-between items-center mt-3 pt-3 border-t border-zinc-700/50">
+                                                    <span className="text-zinc-400 text-sm">Realized P&L</span>
+                                                    <span className={`font-bold ${tradeResultDetails.profitAmount >= 0 ? "text-[#00c805]" : "text-red-500"}`}>
+                                                        {tradeResultDetails.profitAmount >= 0 ? "+" : ""}${tradeResultDetails.profitAmount.toFixed(2)}
+                                                        {" "}
+                                                        ({tradeResultDetails.profitAmount >= 0 ? "+" : ""}{tradeResultDetails.profitPercent.toFixed(2)}%)
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
-                                        <button
-                                            onClick={handleShareRecentTrade}
-                                            className="w-full py-3 bg-[#00c805] hover:bg-[#00e306] text-black rounded-xl font-bold transition flex items-center justify-center gap-2"
-                                        >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-                                            Share Trade to Feed
-                                        </button>
-                                        <button
-                                            onClick={closeTradeModalAndRedirect}
-                                            className="w-full py-3 text-zinc-400 hover:text-white bg-zinc-800 rounded-xl font-bold transition"
-                                        >
-                                            Done
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
+                                    )}
+
+                                    {recentTradeShareState === "auto-shared" && (
+                                        <div className="text-sm text-[#00c805] font-bold flex items-center gap-2 bg-[#00c805]/10 px-4 py-2 rounded-full mt-2 animate-in slide-in-from-bottom-2">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                            Automatically shared to feed
+                                        </div>
+                                    )}
+
+                                    {recentTradeShareState === "shared" && (
+                                        <div className="text-sm text-[#00c805] font-bold flex items-center gap-2 bg-[#00c805]/10 px-4 py-2 rounded-full mt-2 animate-in slide-in-from-bottom-2">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                            Shared to feed!
+                                        </div>
+                                    )}
+
+                                    {recentTradeShareState === "pending" && (
+                                        <div className="flex flex-col w-full gap-3 mt-4">
+                                            <button
+                                                onClick={() => setShowSharePreview(true)}
+                                                className="w-full py-3 bg-[#00c805] hover:bg-[#00e306] text-black rounded-xl font-bold transition flex items-center justify-center gap-2"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                                                Share Trade to Feed
+                                            </button>
+                                            <button
+                                                onClick={closeTradeModalAndRedirect}
+                                                className="w-full py-3 text-zinc-400 hover:text-white bg-zinc-800 rounded-xl font-bold transition"
+                                            >
+                                                Done
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )
                         ) : (
                             <>
                                 <div className="flex rounded-full bg-zinc-800 p-1 mb-6">

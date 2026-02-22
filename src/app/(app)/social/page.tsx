@@ -8,7 +8,6 @@ import { useRouter } from "next/navigation";
 
 export default function SocialPage() {
     const router = useRouter();
-    const [isFriendsMenuOpen, setIsFriendsMenuOpen] = useState(false);
     const [selectedFriend, setSelectedFriend] = useState<any | null>(null);
     const [selectedUserDoc, setSelectedUserDoc] = useState<any | null>(null);
     const [selectedUserHoldings, setSelectedUserHoldings] = useState<any[]>([]);
@@ -278,6 +277,9 @@ export default function SocialPage() {
                                             {activity.ticker}
                                         </span>
                                     </p>
+                                    {activity.message && (
+                                        <p className="text-[#a8a8a0] mt-3 pt-3 border-t border-[#2a3d30]/50 text-sm">{activity.message}</p>
+                                    )}
                                 </div>
 
                                 {/* Actions */}
@@ -348,50 +350,6 @@ export default function SocialPage() {
                             </div>
                         );
                     })}
-                </div>
-            )}
-
-            {/* Floating Friends Button */}
-            <button
-                onClick={() => setIsFriendsMenuOpen(true)}
-                className="fixed bottom-24 right-6 md:bottom-10 md:right-10 w-16 h-16 bg-[#00c805] hover:bg-[#00e306] text-black rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(0,200,5,0.4)] transition-transform hover:scale-105 z-40"
-            >
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-            </button>
-
-            {/* Friends List Slide-up Menu */}
-            {isFriendsMenuOpen && (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-4 sm:p-0">
-                    <div className="bg-[#111c18] border border-[#2a3d30] rounded-t-3xl sm:rounded-3xl p-6 w-full max-w-md shadow-2xl animate-in slide-in-from-bottom-full sm:zoom-in-95 duration-300 transform-gpu mb-0 sm:mb-0">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-2xl font-bold font-serif text-white">Friends</h3>
-                            <button onClick={() => setIsFriendsMenuOpen(false)} className="text-zinc-500 hover:text-white bg-black/50 w-8 h-8 rounded-full flex items-center justify-center border border-[#2a3d30]">✕</button>
-                        </div>
-
-                        <div className="flex gap-2 mb-6">
-                            <button className="flex-1 bg-[#00c805] hover:bg-[#00e306] text-black font-bold py-2 rounded-xl transition text-sm shadow-[0_0_15px_rgba(0,200,5,0.2)]">Add Friend</button>
-                            <button className="flex-1 bg-[#1a2a22] hover:bg-[#2a3d30] border border-[#2a3d30] text-white font-bold py-2 rounded-xl transition text-sm">Requests (2)</button>
-                        </div>
-
-                        <div className="flex flex-col gap-2 max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
-                            {friends.map((friend, i) => (
-                                <div key={i} onClick={() => { setIsFriendsMenuOpen(false); setSelectedFriend(friend); }} className="flex justify-between items-center p-3 hover:bg-[#1a2a22] rounded-2xl cursor-pointer transition border border-transparent hover:border-[#2a3d30] group">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-12 h-12 rounded-full ${friend.color} flex items-center justify-center font-bold text-white text-base shadow-inner group-hover:ring-2 ring-white/20 transition-all`}>
-                                            {friend.avatar}
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-white text-base">{friend.name}</h4>
-                                            <div className="text-sm text-[#a8a8a0]">{friend.handle}</div>
-                                        </div>
-                                    </div>
-                                    <div className={`text-xs font-medium px-2 py-1 rounded-md ${friend.status === 'Online' ? 'bg-[#00c805]/15 text-[#00c805] border border-[#00c805]/20 animate-pulse' : 'bg-black/40 text-zinc-500 border border-white/5'}`}>
-                                        {friend.status}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
                 </div>
             )}
 

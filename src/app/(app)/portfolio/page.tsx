@@ -40,6 +40,8 @@ export default function PortfolioPage() {
     const [aiLoading, setAiLoading] = useState({ pulse: false, insights: false, lookout: false });
     const [txToShare, setTxToShare] = useState<Transaction | null>(null);
     const [shareAudience, setShareAudience] = useState<"public" | "friends">("public");
+    const [shareComment, setShareComment] = useState("");
+    const [showSharePreview, setShowSharePreview] = useState(false);
     const [isSharingTx, setIsSharingTx] = useState(false);
     const [shareSuccess, setShareSuccess] = useState(false);
     const [portfolio7DayPct, setPortfolio7DayPct] = useState<number | null>(null);
@@ -187,6 +189,8 @@ export default function PortfolioPage() {
     const handleOpenShareModal = async (tx: Transaction) => {
         setTxToShare(tx);
         setShareSuccess(false);
+        setShowSharePreview(false);
+        setShareComment("");
         if (auth.currentUser) {
             const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
             if (snap.exists() && snap.data().defaultAudience) {
@@ -227,7 +231,8 @@ export default function PortfolioPage() {
                 timestamp: new Date().toISOString(),
                 likes: [],
                 commentsList: [],
-                isPositive: txToShare.type === "buy"
+                isPositive: txToShare.type === "buy",
+                message: shareComment.trim() || undefined
             });
             setShareSuccess(true);
             setTimeout(() => {
@@ -590,6 +595,15 @@ export default function PortfolioPage() {
                                                             <span className="text-sm text-[#a8a8a0]">{tx.shares} @ ${(tx.price ?? 0).toFixed(2)}</span>
                                                             <span className="font-bold">${(tx.total ?? 0).toFixed(2)}</span>
                                                             <span className="text-sm text-[#a8a8a0]">{new Date(tx.timestamp).toLocaleDateString()}</span>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleOpenShareModal(tx); }}
+                                                                className="text-xs font-bold px-3 py-1.5 rounded-full bg-[#4ade9a]/20 text-[#4ade9a] hover:bg-[#4ade9a]/30 border border-[#4ade9a]/30 transition flex items-center gap-1.5"
+                                                            >
+                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                                                </svg>
+                                                                Share
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 ))
@@ -747,6 +761,136 @@ export default function PortfolioPage() {
                             </div>
                         </BentoGrid>
                     </div>
+
+            {/* Share Transaction Modal */}
+            {txToShare && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div className="bg-[#111c18] border border-[#2a3d30] rounded-3xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold">Share Transaction</h3>
+                            <button
+                                onClick={() => { setTxToShare(null); setShowSharePreview(false); setShareComment(""); }}
+                                className="text-[#a8a8a0] hover:text-white bg-[#1a2a22] w-8 h-8 rounded-full flex items-center justify-center"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        {shareSuccess ? (
+                            <div className="py-8 flex flex-col items-center justify-center text-center">
+                                <div className="w-16 h-16 bg-[#4ade9a]/20 text-[#4ade9a] rounded-full flex items-center justify-center mb-4 border-2 border-[#4ade9a]">
+                                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                                <h4 className="text-2xl font-bold mb-2">Shared to Feed</h4>
+                                <p className="text-[#a8a8a0] text-sm">Your transaction has been posted.</p>
+                            </div>
+                        ) : showSharePreview ? (
+                            <div className="py-4 flex flex-col">
+                                <h4 className="text-lg font-bold mb-4">Share to Feed</h4>
+                                <div className="w-full bg-[#1a2a22] rounded-2xl p-4 mb-4 text-left border border-[#2a3d30]/50">
+                                    <p className="text-[#a8a8a0] text-sm">
+                                        {txToShare.type === "buy"
+                                            ? `purchased ${txToShare.shares.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares of`
+                                            : `sold ${txToShare.shares.toLocaleString(undefined, { maximumFractionDigits: 2 })} shares of`}{" "}
+                                        <span className={`font-bold px-2 py-0.5 rounded-md ${txToShare.type === "buy" ? "bg-[#4ade9a]/10 text-[#4ade9a]" : "bg-white/10 text-white"}`}>
+                                            {txToShare.ticker}
+                                        </span>
+                                        {txToShare.type === "sell" && txToShare.profitPercent != null && (
+                                            <span className={`block mt-2 font-bold ${(txToShare.profitAmount ?? 0) >= 0 ? "text-[#4ade9a]" : "text-red-400"}`}>
+                                                {(txToShare.profitAmount ?? 0) >= 0 ? "+" : ""}{(txToShare.profitPercent ?? 0).toFixed(2)}%
+                                            </span>
+                                        )}
+                                    </p>
+                                    {shareComment.trim() && (
+                                        <p className="text-[#a8a8a0] mt-2 pt-2 border-t border-[#2a3d30]/50 text-sm">{shareComment}</p>
+                                    )}
+                                </div>
+                                <textarea
+                                    placeholder="Add a comment (optional)"
+                                    value={shareComment}
+                                    onChange={(e) => setShareComment(e.target.value)}
+                                    className="w-full bg-[#1a2a22] text-white border border-[#2a3d30] rounded-xl p-4 mb-4 text-sm resize-none focus:outline-none focus:border-[#4ade9a] transition placeholder:text-[#a8a8a0]"
+                                    rows={3}
+                                />
+                                <div className="flex items-center justify-between mb-4 text-sm text-[#a8a8a0]">
+                                    <span>Share with:</span>
+                                    <select
+                                        value={shareAudience}
+                                        onChange={(e) => setShareAudience(e.target.value as "public" | "friends")}
+                                        className="bg-[#1a2a22] text-white border border-[#2a3d30] rounded-lg px-3 py-2 outline-none cursor-pointer"
+                                    >
+                                        <option value="public">Public</option>
+                                        <option value="friends">Friends Only</option>
+                                    </select>
+                                </div>
+                                <button
+                                    onClick={handleShareTransaction}
+                                    disabled={isSharingTx}
+                                    className="w-full py-3 bg-[#4ade9a] hover:bg-[#4ade9a]/90 text-black rounded-xl font-bold transition flex items-center justify-center gap-2 disabled:opacity-50"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                                    {isSharingTx ? "Posting..." : "Post to Feed"}
+                                </button>
+                                <button
+                                    onClick={() => setShowSharePreview(false)}
+                                    className="w-full py-3 text-[#a8a8a0] hover:text-white bg-[#1a2a22] rounded-xl font-bold transition mt-2"
+                                >
+                                    Back
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="py-6 flex flex-col">
+                                <div className="w-full bg-[#1a2a22] rounded-2xl p-4 mb-6 text-left border border-[#2a3d30]/50">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-[#a8a8a0] text-sm">Ticker</span>
+                                        <span className="font-bold text-white">{txToShare.ticker}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-[#a8a8a0] text-sm">Type</span>
+                                        <span className={`font-bold ${txToShare.type === "buy" ? "text-[#4ade9a]" : "text-red-400"}`}>{txToShare.type.toUpperCase()}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-[#a8a8a0] text-sm">Shares</span>
+                                        <span className="font-bold text-white">{txToShare.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-[#a8a8a0] text-sm">Price</span>
+                                        <span className="font-bold text-white">${(txToShare.price ?? 0).toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[#a8a8a0] text-sm">Total</span>
+                                        <span className="font-bold text-white">${(txToShare.total ?? 0).toFixed(2)}</span>
+                                    </div>
+                                    {txToShare.type === "sell" && txToShare.profitPercent != null && (
+                                        <div className="flex justify-between items-center mt-3 pt-3 border-t border-[#2a3d30]/50">
+                                            <span className="text-[#a8a8a0] text-sm">P&L</span>
+                                            <span className={`font-bold ${(txToShare.profitAmount ?? 0) >= 0 ? "text-[#4ade9a]" : "text-red-400"}`}>
+                                                {(txToShare.profitAmount ?? 0) >= 0 ? "+" : ""}${(txToShare.profitAmount ?? 0).toFixed(2)}
+                                                {" "}
+                                                ({(txToShare.profitAmount ?? 0) >= 0 ? "+" : ""}{(txToShare.profitPercent ?? 0).toFixed(2)}%)
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={() => setShowSharePreview(true)}
+                                    className="w-full py-3 bg-[#4ade9a] hover:bg-[#4ade9a]/90 text-black rounded-xl font-bold transition flex items-center justify-center gap-2"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                                    Share Trade to Feed
+                                </button>
+                                <button
+                                    onClick={() => { setTxToShare(null); setShowSharePreview(false); setShareComment(""); }}
+                                    className="w-full py-3 text-[#a8a8a0] hover:text-white bg-[#1a2a22] rounded-xl font-bold transition mt-2"
+                                >
+                                    Done
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
